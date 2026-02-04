@@ -44,3 +44,47 @@ def test_lazy_loading():
     
     _ = service.entries
     assert call_count == 1  # Should be cached
+
+def test_get_accounts():
+    """Verify we can extract active accounts from Open directives."""
+    content = """
+2024-01-01 open Assets:Checking USD
+2024-01-01 open Expenses:Food USD
+2024-01-01 open Income:Salary USD
+2024-02-01 close Assets:OldBank
+"""
+    service = BeancountService(content, loader_func=loader.load_string)
+    
+    accounts = service.get_accounts()
+    
+    # We expect 3 open accounts
+    assert len(accounts) == 3
+    account_names = {a.name for a in accounts}
+    assert "Assets:Checking" in account_names
+    assert "Expenses:Food" in account_names
+    assert "Income:Salary" in account_names
+    assert "Assets:OldBank" not in account_names # Should be ignored (closed)
+
+def test_get_transactions_returns_pydantic():
+    """Verify get_transactions returns Pydantic models with Postings."""
+    content = """
+2024-01-01 * "Store" "Groceries"
+  Expenses:Food  10.00 USD
+  Assets:Cash   -10.00 USD
+"""
+    service = BeancountService(content, loader_func=loader.load_string)
+    
+    txns = service.get_transactions()
+    
+    # Verify top level
+    assert len(txns) == 1
+    t = txns[0]
+    # Check it's our Pydantic model (by checking a method or type, or just attr access)
+    assert t.payee == "Store"
+    assert len(t.postings) == 2
+    
+    # Check postings
+    p1 = t.postings[0]
+    assert p1.account == "Expenses:Food"
+    assert str(p1.units) == "10.00"
+    assert p1.currency == "USD"
