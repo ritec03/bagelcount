@@ -2,7 +2,7 @@ from beancount import loader
 from beancount.core.data import Transaction as BeanTransaction, Open, Close
 from app.core.config import settings
 from typing import List, Tuple, Any, Callable
-from app.models.domain import Account, Transaction, Posting
+from app.models.domain import Account, Transaction, Posting, BudgetAllocation
 
 class BeancountService:
     def __init__(self, filepath: str, loader_func: Callable = loader.load_file):
@@ -78,6 +78,23 @@ class BeancountService:
                     currency=currency
                 ))
         return accounts
+
+    def add_budget(self, allocation: BudgetAllocation) -> None:
+        """
+        Appends a budget directive to the beancount file.
+        Format: YYYY-MM-DD custom "budget" Account Amount Currency
+        """
+        # Ensure period is YYYY-MM-DD. 
+        # If we passed "2024-01", we might want to default to 01, but for now assume full date.
+        
+        directive = f'{allocation.period} custom "budget" {allocation.account} {allocation.amount} {allocation.currency}\n'
+        
+        with open(self.filepath, "a") as f:
+            f.write(directive)
+        
+        # Invalidate cache so next read sees it (though read usually re-reads file in beancount)
+        self._loaded = False
+
 
 # Dependency for FastAPI
 def get_beancount_service():

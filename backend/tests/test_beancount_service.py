@@ -88,3 +88,31 @@ def test_get_transactions_returns_pydantic():
     assert p1.account == "Expenses:Food"
     assert str(p1.units) == "10.00"
     assert p1.currency == "USD"
+
+from app.models.domain import BudgetAllocation
+from decimal import Decimal
+
+def test_add_budget_appends_to_file(tmp_path):
+    """Verify add_budget appends a correctly formatted directive to the file."""
+    # Setup temp file
+    bean_file = tmp_path / "main.bean"
+    bean_file.write_text('2024-01-01 open Expenses:Food USD\n')
+    
+    service = BeancountService(str(bean_file))
+    
+    allocation = BudgetAllocation(
+        account="Expenses:Food",
+        amount=Decimal("500.00"),
+        currency="USD",
+        period="2025-01-01" # Using YYYY-MM-DD for consistency with date type, or string YYYY-MM
+    )
+    
+    # Act
+    service.add_budget(allocation)
+    
+    # Assert
+    content = bean_file.read_text()
+    expected_line = '2025-01-01 custom "budget" Expenses:Food 500.00 USD'
+    assert expected_line in content
+    # Ensure it didn't overwrite
+    assert "open Expenses:Food USD" in content
