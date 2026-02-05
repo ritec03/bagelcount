@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useBudgets } from "../../hooks/useBudgets";
+import { useTransactions } from "../../hooks/useTransactions";
 import { BudgetForm } from "./BudgetForm";
 import type { BudgetAllocation } from "../../lib/types";
 import { Plus, Edit2, Calendar, Repeat } from "lucide-react";
@@ -15,10 +16,39 @@ interface BudgetListProps {
 }
 
 export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListProps) {
-    // In real app, filters would be passed here
+    const { transactions, isLoading: isTxLoading } = useTransactions();
     
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
+
+    // Calculate spent amount for a given account
+    const getSpentForAccount = (accountName: string): number => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth(); // 0-indexed
+
+        return transactions.reduce((total, tx) => {
+            const txDate = new Date(tx.date);
+            if (txDate.getFullYear() !== currentYear || txDate.getMonth() !== currentMonth) {
+                return total;
+            }
+
+            if (!tx.postings) return total;
+
+            // Match account or sub-account logic
+            const relevantPosting = tx.postings.find(p => 
+                p.account === accountName || p.account.startsWith(accountName + ":")
+            );
+            
+            if (relevantPosting) {
+                const amountStr = relevantPosting.units.split(' ')[0];
+                const amount = parseFloat(amountStr);
+                return total + (isNaN(amount) ? 0 : amount);
+            }
+            
+            return total;
+        }, 0);
+    };
 
     const handleSuccess = () => {
         setIsDialogOpen(false);
@@ -48,11 +78,23 @@ export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListPro
                 </button>
             </div>
 
-            {isLoading && <div className="text-sm text-gray-500">Loading budgets...</div>}
+            {(isLoading || isTxLoading) && <div className="text-sm text-gray-500">Loading budgets...</div>}
             
             <div className="grid gap-4">
                 {(Array.isArray(budgets) ? budgets : []).map((b, idx) => {
                     const isStandard = "frequency" in b;
+                    const budgetAmount = parseFloat(b.amount as string);
+                    const spentAmount = getSpentForAccount(b.account);
+                    const percentageSpent = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
+                    const remaining = budgetAmount - spentAmount;
+                    
+                    // Color coding: green if under budget, yellow if close, red if over
+                    const getProgressColor = () => {
+                        if (percentageSpent >= 100) return 'bg-red-500';
+                        if (percentageSpent >= 80) return 'bg-yellow-500';
+                        return 'bg-green-500';
+                    };
+                    
                     return (
                         <div 
                             key={idx} 
@@ -62,25 +104,38 @@ export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListPro
                             }}
                             className="flex items-center justify-between p-4 border rounded-lg bg-card shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
                         >
-                            <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-4 flex-1">
                                 <div className={`p-2 rounded-full ${isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
                                     {isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="font-medium">{b.account}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        {b.currency} {parseFloat(b.amount as string).toFixed(2)}
+                                        {b.currency} {budgetAmount.toFixed(2)}
                                         <span className="mx-2">•</span>
                                         {isStandard 
                                             ? <span className="capitalize">{(b as any).frequency}</span> 
                                             : <span className="text-xs bg-slate-200 px-1 rounded">Project</span>
                                         }
                                     </p>
+                                    {/* Progress Bar */}
+                                    <div className="mt-2 w-full">
+                                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                            <span>${spentAmount.toFixed(2)} spent</span>
+                                            <span>${remaining.toFixed(2)} remaining</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div 
+                                                className={`h-full transition-all duration-300 ${getProgressColor()}`}
+                                                style={{ width: `${Math.min(percentageSpent, 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
                             {/* Tags */}
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 ml-4">
                                 {b.tags?.map(t => (
                                     <span key={t} className="text-xs bg-slate-100 border px-2 py-0.5 rounded-full text-slate-600">
                                         #{t}
