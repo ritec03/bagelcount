@@ -109,7 +109,7 @@
           "budgets"
         ],
         "summary": "Create Budget",
-        "description": "Appends a new budget directive.\nAccepts StandardBudget (frequency) or CustomBudget (end_date).",
+        "description": "Appends a new budget directive.\nAccepts StandardBudget (frequency) or CustomBudget (end_date).\nValidates hierarchical consistency for StandardBudget.",
         "operationId": "create_budget_api_v1_budgets__post",
         "requestBody": {
           "required": true,
