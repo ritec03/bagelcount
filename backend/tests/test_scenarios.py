@@ -103,7 +103,8 @@ def test_scenario_write_budget(test_client_with_sample):
         "account": "Expenses:Utilities",
         "amount": "120.00",
         "currency": "USD",
-        "period": "2024-02-01"
+        "start_date": "2024-02-01",
+        "frequency": "monthly"
     }
     
     # 1. Write
@@ -112,5 +113,9 @@ def test_scenario_write_budget(test_client_with_sample):
     
     # 2. Verify File Content
     content = temp_ledger.read_text()
-    expected_directive = '2024-02-01 custom "budget" Expenses:Utilities 120.00 USD'
-    assert expected_directive in content
+    
+    # We check for the account and amount, and metadata presence
+    # The date will be today's date
+    assert 'custom "budget" Expenses:Utilities 120.00 USD' in content
+    assert 'start_date: "2024-02-01"' in content
+    assert 'frequency: "monthly"' in content

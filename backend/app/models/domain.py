@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Literal
 from datetime import date
 from decimal import Decimal
 
@@ -16,13 +16,23 @@ class Posting(BaseModel):
 
 class Transaction(BaseModel):
     date: date
-    payee: Optional[str] = None
+    payee: str | None = None
     narration: str
-    flag: Optional[str] = "*"
-    postings: List[Posting] = []
+    flag: str | None = "*"
+    postings: list[Posting] = []
 
-class BudgetAllocation(BaseModel):
+class BaseBudget(BaseModel):
     account: str
     amount: Decimal
-    currency: str = "USD"
-    period: str # e.g. "2024-01"
+    currency: str = "CAD" # TODO remove default value here
+    tags: list[str] = []
+    created_at: int | None = None
+    start_date: date
+
+class StandardBudget(BaseBudget):
+    frequency: Literal["monthly", "quarterly", "yearly"]
+
+class CustomBudget(BaseBudget):
+    end_date: date
+
+BudgetAllocation = StandardBudget | CustomBudget

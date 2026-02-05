@@ -89,8 +89,9 @@ def test_get_transactions_returns_pydantic():
     assert str(p1.units) == "10.00"
     assert p1.currency == "USD"
 
-from app.models.domain import BudgetAllocation
+from app.models.domain import StandardBudget
 from decimal import Decimal
+from datetime import date
 
 def test_add_budget_appends_to_file(tmp_path):
     """Verify add_budget appends a correctly formatted directive to the file."""
@@ -100,11 +101,12 @@ def test_add_budget_appends_to_file(tmp_path):
     
     service = BeancountService(str(bean_file))
     
-    allocation = BudgetAllocation(
+    allocation = StandardBudget(
         account="Expenses:Food",
         amount=Decimal("500.00"),
         currency="USD",
-        period="2025-01-01" # Using YYYY-MM-DD for consistency with date type, or string YYYY-MM
+        start_date=date(2025, 1, 1),
+        frequency="monthly"
     )
     
     # Act
@@ -112,7 +114,13 @@ def test_add_budget_appends_to_file(tmp_path):
     
     # Assert
     content = bean_file.read_text()
-    expected_line = '2025-01-01 custom "budget" Expenses:Food 500.00 USD'
-    assert expected_line in content
+    
+    # Directive date is now today
+    today_str = date.today().isoformat()
+    expected_directive_start = f'{today_str} custom "budget" Expenses:Food 500.00 USD'
+    
+    assert expected_directive_start in content
+    assert 'start_date: "2025-01-01"' in content
+    assert 'frequency: "monthly"' in content
     # Ensure it didn't overwrite
     assert "open Expenses:Food USD" in content
