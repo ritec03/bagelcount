@@ -1,0 +1,60 @@
+option "title" "BagelCount Sample Ledger"
+option "operating_currency" "USD"
+
+; --- Accounts ---
+2023-01-01 open Assets:Checking     USD
+2023-01-01 open Assets:Cash         USD
+2023-01-01 open Expenses:Food       USD
+2023-01-01 open Expenses:Rent       USD
+2023-01-01 open Expenses:Utilities  USD
+2023-01-01 open Income:Salary       USD
+2023-01-01 open Equity:Opening-Balances USD
+2023-01-01 open Assets:OldBank      USD
+2023-12-31 close Assets:OldBank
+
+; --- Opening Balances ---
+2023-12-31 * "Opening Balance"
+  Assets:Checking           5000.00 USD
+  Equity:Opening-Balances
+
+; --- Budgets for Jan 2024 ---
+2024-01-01 custom "budget" Expenses:Food      600.00 USD
+2024-01-01 custom "budget" Expenses:Rent     1500.00 USD
+; Note: No budget for Utilities (Edge Case)
+
+; --- Transactions Jan 2024 ---
+2024-01-01 * "Employer" "Salary"
+  Assets:Checking           3000.00 USD
+  Income:Salary
+
+2024-01-02 * "Landlord" "Rent Payment"
+  Expenses:Rent             1500.00 USD
+  Assets:Checking
+
+2024-01-05 * "Kroger" "Weekly Groceries"
+  Expenses:Food              150.00 USD
+  Assets:Checking
+
+2024-01-10 * "Comcast" "Internet"
+  Expenses:Utilities          80.00 USD
+  Assets:Checking
+
+2024-01-15 * "Trader Joes" "More Groceries"
+  Expenses:Food               75.50 USD
+  Assets:Checking
+
+2024-01-20 * "Kroger" "Snacks"
+  Expenses:Food               25.00 USD
+  Assets:Cash
+
+; --- Edge/Corner Cases ---
+; 1. Future Transaction
+2024-02-01 * "Future Cafe" "Coffee"
+  Expenses:Food               5.00 USD
+  Assets:Cash
+
+; 2. Multi-split transaction
+2024-01-25 * "Walmart" "Supplies and Food"
+  Expenses:Food               50.00 USD
+  Expenses:Utilities          20.00 USD ; Light bulbs
+  Assets:Checking            -70.00 USD
