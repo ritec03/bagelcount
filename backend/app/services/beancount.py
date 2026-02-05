@@ -1,7 +1,9 @@
 from beancount import loader
 from beancount.core.data import Transaction as BeanTransaction, Open, Close
 from app.core.config import settings
-from typing import List, Tuple, Any, Callable
+from datetime import date
+from typing import Any
+from collections.abc import Callable
 from app.models.domain import Account, Transaction, Posting, BudgetAllocation
 
 class BeancountService:
@@ -22,15 +24,21 @@ class BeancountService:
         self._loaded = True
 
     @property
-    def entries(self) -> List[Any]:
+    def entries(self) -> list[Any]:
         if not self._loaded:
              self.load()
         return self._entries
 
-    def get_transactions(self) -> List[Transaction]:
+    def get_transactions(self, start_date: date | None = None, end_date: date | None = None) -> list[Transaction]:
         txns = []
         for entry in self.entries:
             if isinstance(entry, BeanTransaction):
+                # Apply Date Filtering
+                if start_date and entry.date < start_date:
+                    continue
+                if end_date and entry.date > end_date:
+                    continue
+
                 postings = []
                 for p in entry.postings:
                     # Posting units is an Amount(number, currency)
@@ -49,7 +57,7 @@ class BeancountService:
                 ))
         return txns
 
-    def get_accounts(self) -> List[Account]:
+    def get_accounts(self) -> list[Account]:
         """
         Returns a list of all active accounts.
         An account is active if it has an Open directive and no Close directive (or closed later).
