@@ -5,6 +5,9 @@ option "operating_currency" "CAD"
 2023-01-01 open Assets:Checking     CAD
 2023-01-01 open Assets:Cash         CAD
 2023-01-01 open Expenses:Food       CAD
+2023-01-01 open Expenses:Food:Restaurants       CAD
+2023-01-01 open Expenses:Food:Restaurants:ExpensiveRestaurant       CAD
+2023-01-01 open Expenses:Food:CoffeeShops       CAD
 2023-01-01 open Expenses:Rent       CAD
 2023-01-01 open Expenses:Utilities  CAD
 2023-01-01 open Income:Salary       CAD

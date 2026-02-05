@@ -7,6 +7,7 @@ import { createBudgetApiV1BudgetsPost as createBudget } from "../../lib/api/sdk.
 import type { BudgetSubmission, StandardBudgetOutput } from "../../lib/types";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { useBudgets } from "../../hooks/useBudgets";
+import { useAccounts } from "../../hooks/useAccounts";
 
 // --- UI Components (Inlined for speed, in real app would be imported from ui/ folder) ---
 // Ideally we would assume shadcn components exist or use basic HTML with tailwind first.
@@ -66,6 +67,10 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
     : (initialData && "end_date" in initialData ? "CustomBudget" : "StandardBudget");
 
   const [activeTab, setActiveTab] = useState<"StandardBudget" | "CustomBudget">(initialType);
+  
+  // Fetch accounts and filter to Expenses only
+  const { accounts } = useAccounts();
+  const expenseAccounts = accounts.filter(acc => acc.name.startsWith("Expenses:"));
   
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetSchema),
@@ -216,7 +221,18 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
           {/* Account */}
           <div className="space-y-2">
             <label className={labelClass}>Account</label>
-            <input {...register("account")} className={inputClass} placeholder="Expenses:Food" />
+            <input 
+              {...register("account")} 
+              className={inputClass} 
+              placeholder="Expenses:Food" 
+              list="expense-accounts"
+              autoComplete="off"
+            />
+            <datalist id="expense-accounts">
+              {expenseAccounts.map(acc => (
+                <option key={acc.name} value={acc.name} />
+              ))}
+            </datalist>
             {errors.account && <span className="text-xs text-red-500">{errors.account.message}</span>}
           </div>
 
