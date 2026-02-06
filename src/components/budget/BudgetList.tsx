@@ -1,18 +1,129 @@
-
-import { useState } from "react";
-import { useBudgets } from "../../hooks/useBudgets";
+import { useState, useMemo } from "react";
 import { useTransactions } from "../../hooks/useTransactions";
 import { BudgetForm } from "./BudgetForm";
 import type { BudgetAllocation } from "../../lib/types";
-import { Plus, Edit2, Calendar, Repeat } from "lucide-react";
-import * as Dialog from "@radix-ui/react-dialog"; 
-// Using Radix primitives directly to mimic shadcn behavior without full component bloat for now
-// In real app, import { Dialog, DialogContent, ... } from "@/components/ui/dialog"
+import { Plus, Calendar, Repeat, Wallet } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface BudgetListProps {
     budgets: BudgetAllocation[];
     isLoading: boolean;
     onBudgetChange: () => void;
+}
+
+interface BudgetCardProps {
+    budget: BudgetAllocation;
+    spentAmount: number;
+    onClick: () => void;
+}
+
+function BudgetCard({ budget, spentAmount, onClick }: BudgetCardProps) {
+    const isStandard = "frequency" in budget;
+    const budgetAmount = parseFloat(budget.amount as string);
+    const percentageSpent = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
+    const remaining = budgetAmount - spentAmount;
+    
+    // Color coding: green if under budget, yellow if close, red if over
+    const getProgressColor = (): string => {
+        if (percentageSpent >= 100) return 'bg-red-500';
+        if (percentageSpent >= 80) return 'bg-yellow-500';
+        return 'bg-green-500';
+    };
+    
+    return (
+        <Card 
+            onClick={onClick}
+            className="hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+            <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                        <div className={cn(
+                            "p-2 rounded-full",
+                            isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                        )}>
+                            {isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-medium">{budget.account}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {budget.currency} {budgetAmount.toFixed(2)}
+                                <span className="mx-2">•</span>
+                                {isStandard 
+                                    ? <span className="capitalize">{budget.frequency}</span>
+                                    : <Badge variant="secondary">Project</Badge>
+                                }
+                            </p>
+                            {/* Progress Bar */}
+                            <div className="mt-2 w-full">
+                                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>${spentAmount.toFixed(2)} spent</span>
+                                    <span>${remaining.toFixed(2)} remaining</span>
+                                </div>
+                                <Progress 
+                                    value={Math.min(percentageSpent, 100)} 
+                                    className="h-2"
+                                    indicatorClassName={getProgressColor()}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Tags */}
+                    {budget.tags && budget.tags.length > 0 && (
+                        <div className="flex gap-2 ml-4">
+                            {budget.tags.map(t => (
+                                <Badge key={t} variant="outline">
+                                    #{t}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function BudgetListSkeleton() {
+    return (
+        <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                    <CardContent className="p-4">
+                        <div className="flex items-center space-x-4">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-3 w-48" />
+                                <Skeleton className="h-2 w-full mt-2" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
+function EmptyState() {
+    return (
+        <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                <Wallet className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No active budgets found.</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                    Get started by creating your first budget.
+                </p>
+            </CardContent>
+        </Card>
+    );
 }
 
 export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListProps) {
@@ -21,34 +132,39 @@ export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListPro
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
 
-    // Calculate spent amount for a given account
-    const getSpentForAccount = (accountName: string): number => {
+    // Memoized calculation of spent amounts for all accounts
+    const spentAmounts = useMemo(() => {
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth(); // 0-indexed
 
-        return transactions.reduce((total, tx) => {
+        const amounts = new Map<string, number>();
+
+        transactions.forEach(tx => {
             const txDate = new Date(tx.date);
             if (txDate.getFullYear() !== currentYear || txDate.getMonth() !== currentMonth) {
-                return total;
+                return;
             }
 
-            if (!tx.postings) return total;
+            if (!tx.postings) return;
 
-            // Match account or sub-account logic
-            const relevantPosting = tx.postings.find(p => 
-                p.account === accountName || p.account.startsWith(accountName + ":")
-            );
-            
-            if (relevantPosting) {
-                const amountStr = relevantPosting.units.split(' ')[0];
-                const amount = parseFloat(amountStr);
-                return total + (isNaN(amount) ? 0 : amount);
-            }
-            
-            return total;
-        }, 0);
-    };
+            tx.postings.forEach(posting => {
+                // For each account in budgets, check if this posting matches
+                budgets.forEach(budget => {
+                    const accountName = budget.account;
+                    if (posting.account === accountName || posting.account.startsWith(accountName + ":")) {
+                        const amountStr = posting.units.split(' ')[0];
+                        const amount = parseFloat(amountStr);
+                        if (!isNaN(amount)) {
+                            amounts.set(accountName, (amounts.get(accountName) || 0) + amount);
+                        }
+                    }
+                });
+            });
+        });
+
+        return amounts;
+    }, [transactions, budgets]);
 
     const handleSuccess = () => {
         setIsDialogOpen(false);
@@ -61,116 +177,50 @@ export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListPro
         setIsDialogOpen(true);
     };
 
-    // Note: Edit logic would require pre-filling the form.
-    // Our BudgetForm setup mainly for Create currently.
-    // For V1, let's focus on "Add Budget" and listing. 
-    // Editing would need the form to accept `defaultValues`.
-    
+    const openEdit = (budget: BudgetAllocation) => {
+        setEditingBudget(budget);
+        setIsDialogOpen(true);
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold tracking-tight">Active Budgets</h2>
-                <button 
-                    onClick={openCreate}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2 bg-black text-white"
-                >
+                <Button onClick={openCreate}>
                     <Plus className="mr-2 h-4 w-4" /> Add Budget
-                </button>
+                </Button>
             </div>
 
-            {(isLoading || isTxLoading) && <div className="text-sm text-gray-500">Loading budgets...</div>}
-            
-            <div className="grid gap-4">
-                {(Array.isArray(budgets) ? budgets : []).map((b, idx) => {
-                    const isStandard = "frequency" in b;
-                    const budgetAmount = parseFloat(b.amount as string);
-                    const spentAmount = getSpentForAccount(b.account);
-                    const percentageSpent = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-                    const remaining = budgetAmount - spentAmount;
-                    
-                    // Color coding: green if under budget, yellow if close, red if over
-                    const getProgressColor = () => {
-                        if (percentageSpent >= 100) return 'bg-red-500';
-                        if (percentageSpent >= 80) return 'bg-yellow-500';
-                        return 'bg-green-500';
-                    };
-                    
-                    return (
-                        <div 
-                            key={idx} 
-                            onClick={() => {
-                                setEditingBudget(b);
-                                setIsDialogOpen(true);
-                            }}
-                            className="flex items-center justify-between p-4 border rounded-lg bg-card shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center space-x-4 flex-1">
-                                <div className={`p-2 rounded-full ${isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
-                                    {isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-medium">{b.account}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {b.currency} {budgetAmount.toFixed(2)}
-                                        <span className="mx-2">•</span>
-                                        {isStandard 
-                                            ? <span className="capitalize">{(b as any).frequency}</span> 
-                                            : <span className="text-xs bg-slate-200 px-1 rounded">Project</span>
-                                        }
-                                    </p>
-                                    {/* Progress Bar */}
-                                    <div className="mt-2 w-full">
-                                        <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                            <span>${spentAmount.toFixed(2)} spent</span>
-                                            <span>${remaining.toFixed(2)} remaining</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                            <div 
-                                                className={`h-full transition-all duration-300 ${getProgressColor()}`}
-                                                style={{ width: `${Math.min(percentageSpent, 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {/* Tags */}
-                            <div className="flex gap-2 ml-4">
-                                {b.tags?.map(t => (
-                                    <span key={t} className="text-xs bg-slate-100 border px-2 py-0.5 rounded-full text-slate-600">
-                                        #{t}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })}
-                
-                {budgets.length === 0 && !isLoading && (
-                    <div className="text-center py-10 text-gray-500 border-dashed border-2 rounded-lg">
-                        No active budgets found.
-                    </div>
-                )}
-            </div>
-
-            {/* Radix Dialog for Modal behavior */}
-            <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-                    <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg bg-white">
-                        <Dialog.Title className="sr-only">
-                            {editingBudget ? "Edit Budget" : "Create Budget"}
-                        </Dialog.Title>
-                        <BudgetForm 
-                            onSuccess={handleSuccess} 
-                            initialData={editingBudget as any} // Cast roughly to submission type (compatible shapes mostly)
+            {(isLoading || isTxLoading) ? (
+                <BudgetListSkeleton />
+            ) : budgets.length === 0 ? (
+                <EmptyState />
+            ) : (
+                <div className="grid gap-4">
+                    {budgets.map((budget, idx) => (
+                        <BudgetCard
+                            key={idx}
+                            budget={budget}
+                            spentAmount={spentAmounts.get(budget.account) || 0}
+                            onClick={() => openEdit(budget)}
                         />
-                        <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-                             <span className="sr-only">Close</span>
-                        </Dialog.Close>
-                    </Dialog.Content>
-                </Dialog.Portal>
-            </Dialog.Root>
+                    ))}
+                </div>
+            )}
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingBudget ? "Edit Budget" : "Create Budget"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <BudgetForm 
+                        onSuccess={handleSuccess} 
+                        initialData={editingBudget}
+                    />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
