@@ -1,3 +1,5 @@
+/// <reference types="vitest/config" />
+// the triple directive is necessary see https://vitest.dev/guide/#configuring-vitest
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from 'vite'
@@ -25,5 +27,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  // Vitest configuration
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
   },
 })
