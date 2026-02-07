@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { createBudgetApiV1BudgetsPost as createBudget } from "../../lib/api/sdk.gen";
-import type { BudgetSubmission, StandardBudgetOutput } from "../../lib/types";
+import type { BudgetSubmission } from "../../lib/types";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useBudgets } from "../../hooks/useBudgets";
 import { useAccounts } from "../../hooks/useAccounts";
+import { useBudgetValidation } from "../../hooks/useBudgetValidation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -41,43 +42,46 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { budgetSchema, type BudgetFormValues } from "@/lib/schemas";
 
-// --- Schema ---
-// We need a super-schema that handles both types conditionally? 
-// Or just a loose schema that refines based on type?
-// Let's go with a Discriminated Union in Zod if possible, or just optional fields with refinements.
-
-const budgetSchema = z.object({
-  type: z.enum(["StandardBudget", "CustomBudget"]),
-  account: z.string().min(1, "Account is required"),
-  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid amount"),
-  currency: z.string().default("CAD"),
-  tags: z.string().optional(),
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date (YYYY-MM-DD)"),
-  // Conditional fields
-  frequency: z.enum(["monthly", "quarterly", "yearly"]).optional(),
-  end_date: z.string().optional(), // YYYY-MM-DD
-}).superRefine((data, ctx) => {
-  if (data.type === "StandardBudget") {
-    if (!data.frequency) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Frequency is required for Recurring budgets",
-        path: ["frequency"],
-      });
-    }
-  } else {
-    if (!data.end_date) {
-      ctx.addIssue({
-        code: "custom",
-        message: "End Date is required for One-off projects",
-        path: ["end_date"],
-      });
-    }
+// Type-safe mapper for initialData
+function mapInitialDataToFormValues(
+  initialData: BudgetSubmission | null | undefined
+): BudgetFormValues {
+  if (!initialData) {
+    return {
+      type: "StandardBudget" as const,
+      account: "",
+      amount: "",
+      currency: "CAD",
+      tags: "",
+      start_date: new Date().toISOString().split("T")[0],
+      frequency: "monthly",
+    };
   }
-});
 
-type BudgetFormValues = z.infer<typeof budgetSchema>;
+  const base = {
+    account: initialData.account,
+    amount: String(initialData.amount),
+    currency: initialData.currency || "CAD",
+    tags: initialData.tags?.join(", ") || "",
+    start_date: initialData.start_date,
+  };
+
+  if ("frequency" in initialData) {
+    return {
+      ...base,
+      type: "StandardBudget" as const,
+      frequency: initialData.frequency,
+    };
+  } else {
+    return {
+      ...base,
+      type: "CustomBudget" as const,
+      end_date: initialData.end_date,
+    };
+  }
+}
 
 interface BudgetFormProps {
   onSuccess?: () => void;
@@ -85,10 +89,8 @@ interface BudgetFormProps {
 }
 
 export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
-  // Determine initial type safely
-  const initialType = initialData && "frequency" in initialData 
-    ? "StandardBudget" 
-    : (initialData && "end_date" in initialData ? "CustomBudget" : "StandardBudget");
+  const defaultValues = mapInitialDataToFormValues(initialData);
+  const initialType = defaultValues.type || "StandardBudget";
 
   const [activeTab, setActiveTab] = useState<"StandardBudget" | "CustomBudget">(initialType);
   
@@ -96,23 +98,13 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
   const { accounts } = useAccounts();
   const expenseAccounts = accounts.filter(acc => acc.name.startsWith("Expenses:"));
   
-  // NOTE remove type variable from useForm (<BudgetFormValues>) to avoid inference mismatch
-  const form = useForm({
+  
+  const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetSchema),
-    defaultValues: {
-      type: initialType,
-      currency: initialData?.currency || "CAD",
-      start_date: initialData?.start_date || new Date().toISOString().split("T")[0],
-      amount: initialData ? String(initialData.amount) : "",
-      account: initialData?.account || "", 
-      tags: initialData?.tags?.join(", ") || "",
-      // Conditional defaults - use type guards to safely access union type fields
-      frequency: (initialData && "frequency" in initialData) ? initialData.frequency : "monthly",
-      end_date: (initialData && "end_date" in initialData) ? initialData.end_date : ""
-    }
+    defaultValues,
   });
 
-  const { handleSubmit, setValue, formState: { isSubmitting } } = form;
+  const { handleSubmit, setValue, watch, formState: { isSubmitting } } = form;
 
   // React to tab change
   const handleTabChange = (type: "StandardBudget" | "CustomBudget") => {
@@ -121,59 +113,31 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
   };
 
   // Retrieve current budgets for validation context
-  const { budgets } = useBudgets(); 
+  const { budgets } = useBudgets();
+  
+  // Watch form fields for real-time validation
+  // eslint-disable-next-line react-hooks/incompatible-library -- watch() from react-hook-form cannot be memoized, this is expected behavior
+  const watchedAccount = watch("account");
+  const watchedAmount = watch("amount");
+  const watchedType = watch("type");
+  
+  // Real-time validation hook
+  const validation = useBudgetValidation(
+    budgets,
+    watchedAccount || "",
+    parseFloat(watchedAmount) || 0,
+    watchedType || "StandardBudget"
+  ); 
 
   const onSubmit = async (data: BudgetFormValues) => {
     try {
-      const amount = parseFloat(data.amount);
-
-      // --- Consistency Validation (StandardBudget Only) ---
-      if (data.type === "StandardBudget" && budgets) {
-         const standardBudgets = budgets.filter((b): b is StandardBudgetOutput => "frequency" in b);
-         
-         // 1. Child Check: Ensure we don't exceed Parent
-         const parentName = data.account.split(':').slice(0, -1).join(':');
-         if (parentName) {
-             const parentBudget = standardBudgets.find(b => b.account === parentName);
-             if (parentBudget) {
-                 // Calculate used by other siblings
-                 // We exclude the current account from the sum because this new amount will replace/set it.
-                 const siblings = standardBudgets.filter(b => 
-                    b.account.startsWith(parentName + ":") && // Is Child
-                    b.account.split(':').length === parentName.split(':').length + 1 && // Is Direct Child
-                    b.account !== data.account // Exclude self (if updating)
-                 );
-                 
-                 const siblingsUsed = siblings.reduce((sum, b) => sum + parseFloat(b.amount as string), 0);
-                 const available = parseFloat(parentBudget.amount as string) - siblingsUsed;
-                 
-                 if (amount > available) {
-                     form.setError("amount", { 
-                        type: "manual", 
-                        message: `Exceeds parent budget (${parentName}). Available: $${available.toFixed(2)}` 
-                     });
-                     return; // Stop submission
-                 }
-             }
-         }
-
-         // 2. Parent Check: Ensure we have enough for Children
-         // If we are setting a Parent budget, it must cover existing Children.
-         const children = standardBudgets.filter(b => 
-            b.account.startsWith(data.account + ":") &&
-            b.account.split(':').length === data.account.split(':').length + 1 // Direct children
-         );
-         
-         if (children.length > 0) {
-             const childrenSum = children.reduce((sum, b) => sum + parseFloat(b.amount as string), 0);
-             if (amount < childrenSum) {
-                 form.setError("amount", { 
-                    type: "manual", 
-                    message: `Insufficient for sub-categories. Required: $${childrenSum.toFixed(2)}` 
-                 });
-                 return; // Stop submission
-             }
-         }
+      // Submit-time validation check (blocks submission)
+      if (!validation.isValid) {
+        form.setError("amount", {
+          type: "manual",
+          message: validation.message || "Invalid budget amount"
+        });
+        return;
       }
 
       // Transformation: String tags -> Array
@@ -307,6 +271,17 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
                       <Input {...field} className="pl-10" placeholder="500.00" />
                     </div>
                   </FormControl>
+                  {/* Real-time helper text (non-blocking) */}
+                  {validation.availableBudget !== null && (
+                    <FormDescription>
+                      Available budget: ${validation.availableBudget.toFixed(2)}
+                    </FormDescription>
+                  )}
+                  {!validation.isValid && validation.message && (
+                    <FormDescription className="text-amber-600">
+                      {validation.message}
+                    </FormDescription>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

@@ -8,7 +8,7 @@ export function useBudgets(filters: {
     startDate?: string;
     endDate?: string; 
 } = {}) {
-    // Basic Fetch Hook (since we are not using React Query yet per plan)
+    // Basic Fetch Hook (since we are not using React Query yet)
     const [budgets, setBudgets] = useState<BudgetAllocation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
