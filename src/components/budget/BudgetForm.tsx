@@ -5,18 +5,42 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createBudgetApiV1BudgetsPost as createBudget } from "../../lib/api/sdk.gen";
 import type { BudgetSubmission, StandardBudgetOutput } from "../../lib/types";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useBudgets } from "../../hooks/useBudgets";
 import { useAccounts } from "../../hooks/useAccounts";
-
-// --- UI Components (Inlined for speed, in real app would be imported from ui/ folder) ---
-// Ideally we would assume shadcn components exist or use basic HTML with tailwind first.
-// I'll use standard HTML + Tailwind classes that mimic Shadcn for this iteration to avoid file hunting.
-
-const cardClass = "rounded-xl border bg-card text-card-foreground shadow";
-const inputClass = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
-const labelClass = "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70";
-const buttonClass = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 // --- Schema ---
 // We need a super-schema that handles both types conditionally? 
@@ -37,7 +61,7 @@ const budgetSchema = z.object({
   if (data.type === "StandardBudget") {
     if (!data.frequency) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Frequency is required for Recurring budgets",
         path: ["frequency"],
       });
@@ -45,7 +69,7 @@ const budgetSchema = z.object({
   } else {
     if (!data.end_date) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "End Date is required for One-off projects",
         path: ["end_date"],
       });
@@ -72,7 +96,8 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
   const { accounts } = useAccounts();
   const expenseAccounts = accounts.filter(acc => acc.name.startsWith("Expenses:"));
   
-  const form = useForm<BudgetFormValues>({
+  // NOTE remove type variable from useForm (<BudgetFormValues>) to avoid inference mismatch
+  const form = useForm({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
       type: initialType,
@@ -81,13 +106,13 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
       amount: initialData ? String(initialData.amount) : "",
       account: initialData?.account || "", 
       tags: initialData?.tags?.join(", ") || "",
-      // Conditional defaults
-      frequency: (initialData as any)?.frequency || "monthly",
-      end_date: (initialData as any)?.end_date || ""
+      // Conditional defaults - use type guards to safely access union type fields
+      frequency: (initialData && "frequency" in initialData) ? initialData.frequency : "monthly",
+      end_date: (initialData && "end_date" in initialData) ? initialData.end_date : ""
     }
   });
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = form;
+  const { handleSubmit, setValue, formState: { isSubmitting } } = form;
 
   // React to tab change
   const handleTabChange = (type: "StandardBudget" | "CustomBudget") => {
@@ -190,101 +215,181 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
     }
   };
   
-  // Watch active tab visually
-  const currentType = watch("type");
+  const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
 
   return (
-    <div className={cardClass}>
-      <div className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Create Budget</h3>
-        
-        {/* Tab Switcher */}
-        <div className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg mb-6 border bg-slate-100">
-          <button
-            type="button"
-            onClick={() => handleTabChange("StandardBudget")}
-            className={`text-sm font-medium py-1.5 rounded-md transition-all ${activeTab === "StandardBudget" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-black"}`}
-          >
-            Recurring Rule
-          </button>
-          <button
-             type="button"
-             onClick={() => handleTabChange("CustomBudget")}
-             className={`text-sm font-medium py-1.5 rounded-md transition-all ${activeTab === "CustomBudget" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-black"}`}
-          >
-            One-off Project
-          </button>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Create Budget</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as "StandardBudget" | "CustomBudget")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="StandardBudget">Recurring Rule</TabsTrigger>
+            <TabsTrigger value="CustomBudget">One-off Project</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          
-          {/* Account */}
-          <div className="space-y-2">
-            <label className={labelClass}>Account</label>
-            <input 
-              {...register("account")} 
-              className={inputClass} 
-              placeholder="Expenses:Food" 
-              list="expense-accounts"
-              autoComplete="off"
+        <Form {...form}>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6">
+            
+            {/* Account - Combobox */}
+            <FormField
+              control={form.control}
+              name="account"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account</FormLabel>
+                  <Popover open={accountPopoverOpen} onOpenChange={setAccountPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value
+                            ? expenseAccounts.find((acc) => acc.name === field.value)?.name
+                            : "Select account..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search accounts..." />
+                        <CommandList>
+                          <CommandEmpty>No account found.</CommandEmpty>
+                          <CommandGroup>
+                            {expenseAccounts.map((acc) => (
+                              <CommandItem
+                                value={acc.name}
+                                key={acc.name}
+                                onSelect={() => {
+                                  form.setValue("account", acc.name);
+                                  setAccountPopoverOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    acc.name === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {acc.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <datalist id="expense-accounts">
-              {expenseAccounts.map(acc => (
-                <option key={acc.name} value={acc.name} />
-              ))}
-            </datalist>
-            {errors.account && <span className="text-xs text-red-500">{errors.account.message}</span>}
-          </div>
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <label className={labelClass}>Amount</label>
-            <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500 text-xs mt-0.5">CAD</span>
-                <input {...register("amount")} className={`${inputClass} pl-10`} placeholder="500.00" />
-            </div>
-            {errors.amount && <span className="text-xs text-red-500">{errors.amount.message}</span>}
-          </div>
+            {/* Amount */}
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-500 text-xs mt-0.5">CAD</span>
+                      <Input {...field} className="pl-10" placeholder="500.00" />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* Conditional Fields */}
-          {activeTab === "StandardBudget" ? (
-             <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                <label className={labelClass}>Frequency</label>
-                <select {...register("frequency")} className={inputClass}>
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
-                {errors.frequency && <span className="text-xs text-red-500">{errors.frequency.message}</span>}
-             </div>
-          ) : (
-             <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                <label className={labelClass}>End Date</label>
-                <input type="date" {...register("end_date")} className={inputClass} />
-                {errors.end_date && <span className="text-xs text-red-500">{errors.end_date.message}</span>}
-             </div>
-          )}
+            {/* Conditional Fields */}
+            {activeTab === "StandardBudget" ? (
+              <FormField
+                control={form.control}
+                name="frequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequency</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="end_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-          {/* Start Date */}
-          <div className="space-y-2">
-            <label className={labelClass}>Start Date</label>
-            <input type="date" {...register("start_date")} className={inputClass} />
-            {errors.start_date && <span className="text-xs text-red-500">{errors.start_date.message}</span>}
-          </div>
+            {/* Start Date */}
+            <FormField
+              control={form.control}
+              name="start_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* Tags */}
-          <div className="space-y-2">
-            <label className={labelClass}>Tags (comma separated)</label>
-            <input {...register("tags")} className={inputClass} placeholder="vacation, essentials" />
-          </div>
+            {/* Tags */}
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tags (comma separated)</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="vacation, essentials" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <button type="submit" disabled={isSubmitting} className={`${buttonClass} w-full mt-4 bg-blue-600 text-white hover:bg-blue-700`}>
-            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Save Budget
-          </button>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Budget
+            </Button>
 
-        </form>
-      </div>
-    </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
