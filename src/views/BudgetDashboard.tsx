@@ -2,9 +2,11 @@
 import { BudgetList } from "../components/budget/BudgetList";
 import { BudgetSunburst } from "../components/budget/BudgetSunburst";
 import { useBudgets } from "../hooks/useBudgets";
+import { useTransactions } from "../hooks/useTransactions";
 
 export function BudgetDashboard() {
     const { budgets, isLoading, refetch } = useBudgets();
+    const { transactions, isLoading: isTxLoading } = useTransactions();
 
     return (
         <div className="container mx-auto p-6 space-y-6">
@@ -16,7 +18,11 @@ export function BudgetDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
                 {/* Visualization Column (Dominant) */}
                 <div className="lg:col-span-2 space-y-4">
-                    <BudgetSunburst budgets={budgets} isLoading={isLoading} />
+                    <BudgetSunburst 
+                        budgets={budgets} 
+                        transactions={transactions}
+                        isLoading={isLoading || isTxLoading} 
+                    />
                     {/* Placeholder for future insights or custom budget list if separated */}
                 </div>
 
