@@ -1,9 +1,8 @@
 import { useCallback } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
-import { useBudgetSunburstData } from '../../hooks/useBudgetSunburstData';
+import { useBudgetSunburstData, type SunburstNode } from '../../hooks/useBudgetSunburstData';
 import type { BudgetAllocation } from '../../lib/types';
 import type { Transaction } from '../../lib/api/types.gen';
-import type { SunburstNode } from '../../hooks/types/sunburst';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
