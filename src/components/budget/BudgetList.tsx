@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useBudgetSpentAmounts } from "../../hooks/useBudgetSpentAmounts";
 import { BudgetForm } from "./BudgetForm";
-import type { BudgetAllocation } from "../../lib/types";
 import { Plus, Calendar, Repeat, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,22 +8,36 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { normalizeBudgetAmount, filterBudgetsByMode } from '@/lib/budgetCalculations';
+import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
+import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 
 interface BudgetListProps {
     budgets: BudgetAllocation[];
     isLoading: boolean;
     onBudgetChange: () => void;
+    viewDate: Date;
+    periodType: PeriodType;
+    normalizationMode: NormalizationMode;
 }
 
 interface BudgetCardProps {
     budget: BudgetAllocation;
     spentAmount: number;
     onClick: () => void;
+    periodType: 'monthly' | 'yearly';
+    normalizationMode: 'pro-rated' | 'full';
 }
 
-function BudgetCard({ budget, spentAmount, onClick }: BudgetCardProps) {
+function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMode }: BudgetCardProps) {
     const isStandard = "frequency" in budget;
-    const budgetAmount = parseFloat(budget.amount as string);
+    let budgetAmount = parseFloat(budget.amount as string);
+    
+    // Apply normalization if standard budget and pro-rated mode
+    if (isStandard && normalizationMode === 'pro-rated') {
+        budgetAmount = normalizeBudgetAmount(budgetAmount, budget.frequency, periodType);
+    }
+
     const percentageSpent = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
     const remaining = budgetAmount - spentAmount;
     
@@ -126,12 +138,22 @@ function EmptyState() {
     );
 }
 
-export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListProps) {
+export function BudgetList({ 
+    budgets, 
+    isLoading, 
+    onBudgetChange,
+    viewDate,
+    periodType,
+    normalizationMode
+}: BudgetListProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
 
+    // Filter budgets based on normalization mode using shared utility
+    const filteredBudgets = filterBudgetsByMode(budgets, periodType, normalizationMode, viewDate);
+
     // Calculate spent amounts using custom hook
-    const spentAmounts = useBudgetSpentAmounts(budgets);
+    const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);
 
     const handleSuccess = () => {
         setIsDialogOpen(false);
@@ -160,16 +182,18 @@ export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListPro
 
             {isLoading ? (
                 <BudgetListSkeleton />
-            ) : budgets.length === 0 ? (
+            ) : filteredBudgets.length === 0 ? (
                 <EmptyState />
             ) : (
                 <div className="grid gap-4">
-                    {budgets.map((budget, idx) => (
+                    {filteredBudgets.map((budget, idx) => (
                         <BudgetCard
                             key={idx}
                             budget={budget}
                             spentAmount={spentAmounts.get(budget.account) || 0}
                             onClick={() => openEdit(budget)}
+                            periodType={periodType}
+                            normalizationMode={normalizationMode}
                         />
                     ))}
                 </div>

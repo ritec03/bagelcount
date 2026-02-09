@@ -13,7 +13,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       expect(result.current.isLoading).toBe(false);
@@ -34,7 +34,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       expect(result.current.data.type).toBe('category');
@@ -57,7 +57,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const root = result.current.data;
@@ -104,7 +104,7 @@ describe('useBudgetSunburstData', () => {
       }];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, now, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -146,7 +146,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -203,7 +203,7 @@ describe('useBudgetSunburstData', () => {
       ];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, now, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -238,7 +238,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -283,7 +283,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -323,7 +323,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert - totalBudget should show actual allocation (1100), not parent budget (1000)
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -369,7 +369,7 @@ describe('useBudgetSunburstData', () => {
       }];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, now, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -404,7 +404,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -433,9 +433,10 @@ describe('useBudgetSunburstData', () => {
         frequency: 'monthly'
       }];
       const transactions: Transaction[] = [];
+      const viewDate = new Date(2026, 0, 1);
 
       // Act
-      const { result, rerender } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result, rerender } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'pro-rated'));
       const firstResult = result.current.data;
       
       rerender();
@@ -458,7 +459,7 @@ describe('useBudgetSunburstData', () => {
 
       // Act
       const { result, rerender } = renderHook(
-        ({ b }) => useBudgetSunburstData(b, transactions),
+        ({ b }) => useBudgetSunburstData(b, transactions, new Date(), 'monthly', 'pro-rated'),
         { initialProps: { b: budgets } }
       );
       const firstResult = result.current.data;
@@ -500,7 +501,7 @@ describe('useBudgetSunburstData', () => {
 
       // Act
       const { result, rerender } = renderHook(
-        ({ t }) => useBudgetSunburstData(budgets, t),
+        ({ t }) => useBudgetSunburstData(budgets, t, now, 'monthly', 'pro-rated'),
         { initialProps: { t: transactions } }
       );
       const firstResult = result.current.data;
@@ -532,7 +533,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions));
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       expect(result.current).toHaveProperty('data');
@@ -540,6 +541,188 @@ describe('useBudgetSunburstData', () => {
       expect(typeof result.current.isLoading).toBe('boolean');
       expect(result.current.data).toHaveProperty('type');
       expect(result.current.data.type).toBe('category');
+    });
+  });
+  describe('Period Logic & Normalization', () => {
+    it('should aggregate yearly spending when periodType is yearly', () => {
+      // Arrange
+      const budgets: BudgetAllocation[] = [{
+        account: 'Expenses:Food',
+        amount: '1200.00',
+        currency: 'CAD',
+        start_date: '2026-01-01',
+        frequency: 'monthly'
+      }];
+      
+      const viewDate = new Date(2026, 0, 1); // Jan 2026
+      
+      const transactions: Transaction[] = [
+        {
+          date: '2026-01-15',
+          narration: 'Jan expense',
+          postings: [{ account: 'Expenses:Food', units: '50.00 CAD', currency: 'CAD' }]
+        },
+        {
+          date: '2026-05-15', 
+          narration: 'May expense',
+          postings: [{ account: 'Expenses:Food', units: '50.00 CAD', currency: 'CAD' }]
+        }
+      ];
+
+      // Act - Yearly View
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'yearly', 'full'));
+
+      // Assert
+      const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
+      const foodNode = expensesNode?.children?.find(c => c.name === 'Food');
+      
+      if (foodNode && foodNode.type === 'budget') {
+        expect(foodNode.spent).toBe(100.00); // 50 + 50
+      }
+    });
+
+    it('should normalize annual budget to monthly amount when viewing monthly with pro-rated mode', () => {
+      // Arrange
+      const budgets: BudgetAllocation[] = [{
+        account: 'Expenses:Insurance',
+        amount: '1200.00',
+        currency: 'CAD',
+        start_date: '2026-01-01',
+        frequency: 'yearly' // Yearly budget
+      }];
+      
+      const viewDate = new Date(2026, 0, 1);
+      const transactions: Transaction[] = [];
+
+      // Act
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'pro-rated'));
+
+      // Assert
+      const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
+      const insuranceNode = expensesNode?.children?.find(c => c.name === 'Insurance');
+      
+      if (insuranceNode && insuranceNode.type === 'budget') {
+        expect(insuranceNode.budgeted).toBe(100.00); // 1200 / 12
+        expect(insuranceNode.value).toBe(100.00);
+      }
+    });
+
+    it('should NOT normalize annual budget when viewing monthly with full mode', () => {
+      // Arrange
+      const budgets: BudgetAllocation[] = [{
+        account: 'Expenses:Insurance',
+        amount: '1200.00',
+        currency: 'CAD',
+        start_date: '2026-01-01',
+        frequency: 'yearly'
+      }];
+      
+      const viewDate = new Date(2026, 0, 1);
+      const transactions: Transaction[] = [];
+
+      // Act
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'full'));
+
+      // Assert
+      const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
+      const insuranceNode = expensesNode?.children?.find(c => c.name === 'Insurance');
+      
+      if (insuranceNode && insuranceNode.type === 'budget') {
+        expect(insuranceNode.budgeted).toBe(1200.00); // Full amount
+      }
+    });
+    
+    it('should normalize monthly budget to yearly amount when viewing yearly with pro-rated mode', () => {
+      // Arrange
+      const budgets: BudgetAllocation[] = [{
+        account: 'Expenses:Food',
+        amount: '500.00',
+        currency: 'CAD',
+        start_date: '2026-01-01',
+        frequency: 'monthly'
+      }];
+      
+      const viewDate = new Date(2026, 0, 1);
+      const transactions: Transaction[] = [];
+
+      // Act
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'yearly', 'pro-rated'));
+
+      // Assert
+      const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
+      const foodNode = expensesNode?.children?.find(c => c.name === 'Food');
+      
+      if (foodNode && foodNode.type === 'budget') {
+        expect(foodNode.budgeted).toBe(6000.00); // 500 * 12
+      }
+    });
+
+    it('should ONLY show monthly budgets in monthly view with full amount mode', () => {
+      // Arrange
+      const budgets: BudgetAllocation[] = [
+        {
+          account: 'Expenses:Food',
+          amount: '500.00',
+          currency: 'CAD',
+          start_date: '2026-01-01',
+          frequency: 'monthly'
+        },
+        {
+          account: 'Expenses:Insurance',
+          amount: '1200.00',
+          currency: 'CAD',
+          start_date: '2026-01-01',
+          frequency: 'yearly'
+        }
+      ];
+      
+      const viewDate = new Date(2026, 0, 1);
+      const transactions: Transaction[] = [];
+
+      // Act
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'full'));
+
+      // Assert - Should only see the monthly budget (Food), not the yearly budget (Insurance)
+      const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
+      const foodNode = expensesNode?.children?.find(c => c.name === 'Food');
+      const insuranceNode = expensesNode?.children?.find(c => c.name === 'Insurance');
+      
+      expect(foodNode).toBeDefined();
+      expect(insuranceNode).toBeUndefined(); // Should not be present
+    });
+
+    it('should ONLY show yearly budgets in yearly view with full amount mode', () => {
+      // Arrange
+      const budgets: BudgetAllocation[] = [
+        {
+          account: 'Expenses:Food',
+          amount: '500.00',
+          currency: 'CAD',
+          start_date: '2026-01-01',
+          frequency: 'monthly'
+        },
+        {
+          account: 'Expenses:Insurance',
+          amount: '1200.00',
+          currency: 'CAD',
+          start_date: '2026-01-01',
+          frequency: 'yearly'
+        }
+      ];
+      
+      const viewDate = new Date(2026, 0, 1);
+      const transactions: Transaction[] = [];
+
+      // Act
+      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'yearly', 'full'));
+
+      // Assert - Should only see the yearly budget (Insurance), not the monthly budget (Food)
+      const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
+      const foodNode = expensesNode?.children?.find(c => c.name === 'Food');
+      const insuranceNode = expensesNode?.children?.find(c => c.name === 'Insurance');
+      
+      expect(insuranceNode).toBeDefined();
+      expect(foodNode).toBeUndefined(); // Should not be present
     });
   });
 });

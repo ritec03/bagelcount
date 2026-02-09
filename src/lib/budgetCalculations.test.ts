@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMonthlySpent } from './budgetCalculations';
+import { calculateMonthlySpent, calculatePeriodSpent, filterBudgetsByMode } from './budgetCalculations';
 import type { Transaction } from './api/types.gen';
-import type { BudgetAllocation } from './types';
+import type { BudgetAllocation, NormalizationMode } from './types';
 
 describe('calculateMonthlySpent', () => {
   // Test Strategy: ZOMBIES - (Z) Zero cases
@@ -439,4 +439,164 @@ describe('calculateMonthlySpent', () => {
       expect(result.get('Expenses:Food')).toBe(50.00);
     });
   });
+});
+
+describe('calculatePeriodSpent', () => {
+    // Test Strategy: ZOMBIES - (I) Interface & (B) Boundary
+    
+    it('should calculate spent amount for a specific month (Standard Monthly)', () => {
+        // Arrange
+        const transactions: Transaction[] = [
+            {
+                date: '2026-01-15', // In target
+                narration: 'Jan expense',
+                postings: [{ account: 'Expenses:Food', units: '50.00 CAD', currency: 'CAD' }]
+            },
+            {
+                date: '2026-02-15', // Out of target
+                narration: 'Feb expense',
+                postings: [{ account: 'Expenses:Food', units: '60.00 CAD', currency: 'CAD' }]
+            }
+        ];
+        const budgets: BudgetAllocation[] = [{
+            account: 'Expenses:Food',
+            amount: '500.00',
+            currency: 'CAD',
+            start_date: '2026-01-01',
+            frequency: 'monthly'
+        }];
+
+        // Act
+        const result = calculatePeriodSpent(transactions, budgets, 'monthly', new Date(2026, 0, 1));
+
+        // Assert
+        expect(result.get('Expenses:Food')).toBe(50.00);
+    });
+
+    it('should calculate spent amount for the entire year (Standard Yearly)', () => {
+        // Arrange
+        const transactions: Transaction[] = [
+            {
+                date: '2026-01-15', // In target
+                narration: 'Jan expense',
+                postings: [{ account: 'Expenses:Food', units: '50.00 CAD', currency: 'CAD' }]
+            },
+            {
+                date: '2026-05-20', // In target
+                narration: 'May expense',
+                postings: [{ account: 'Expenses:Food', units: '60.00 CAD', currency: 'CAD' }]
+            },
+            {
+                date: '2025-12-31', // Out of target
+                narration: 'Last year',
+                postings: [{ account: 'Expenses:Food', units: '100.00 CAD', currency: 'CAD' }]
+            }
+        ];
+        const budgets: BudgetAllocation[] = [{
+            account: 'Expenses:Food',
+            amount: '500.00',
+            currency: 'CAD',
+            start_date: '2026-01-01',
+            frequency: 'monthly'
+        }];
+
+        // Act
+        const result = calculatePeriodSpent(transactions, budgets, 'yearly', new Date(2026, 5, 1));
+
+        // Assert
+        expect(result.get('Expenses:Food')).toBe(110.00);
+    });
+});
+
+describe('filterBudgetsByMode', () => {
+    const jan1 = new Date(2024, 0, 1); // Jan 1 2024
+    const jun1 = new Date(2024, 5, 1); // Jun 1 2024
+    const dec1 = new Date(2024, 11, 1); // Dec 1 2024
+
+    const monthlyBudget: BudgetAllocation = {
+        account: 'Expenses:Monthly',
+        amount: '100',
+        currency: 'USD',
+        start_date: '2024-01-01', // Starts Jan 1
+        frequency: 'monthly'
+    };
+
+    const futureMonthlyBudget: BudgetAllocation = {
+        account: 'Expenses:Future',
+        amount: '100',
+        currency: 'USD',
+        start_date: '2025-01-01',
+        frequency: 'monthly'
+    };
+
+    const yearlyBudget: BudgetAllocation = {
+        account: 'Expenses:Yearly',
+        amount: '1200',
+        currency: 'USD',
+        start_date: '2024-01-01',
+        frequency: 'yearly'
+    };
+
+    const projectBudget: BudgetAllocation = {
+        account: 'Expenses:Project',
+        amount: '500',
+        start_date: '2024-01-01',
+        end_date: '2024-06-30'
+    }; // Custom (no frequency)
+
+    const mode: NormalizationMode = 'full'; // Should be ignored by filtering logic
+
+    describe('Date Overlap Logic', () => {
+        it('should exclude budgets starting in the future', () => {
+            // Asking for monthly budgets on Jan 1 2024. Future budget starts 2025.
+            const result = filterBudgetsByMode([monthlyBudget, futureMonthlyBudget], 'monthly', mode, jan1);
+            expect(result).toContain(monthlyBudget);
+            expect(result).not.toContain(futureMonthlyBudget);
+        });
+
+        it('should include budgets starting on the exact date', () => {
+             const result = filterBudgetsByMode([monthlyBudget], 'monthly', mode, jan1);
+             expect(result).toContain(monthlyBudget);
+        });
+
+        it('should include budgets started in the past', () => {
+             const result = filterBudgetsByMode([monthlyBudget], 'monthly', mode, jun1);
+             expect(result).toContain(monthlyBudget);
+        });
+
+        it('should exclude custom budgets that have ended', () => {
+             // Project ends Jun 30. Check on Dec 1.
+             const result = filterBudgetsByMode([projectBudget], 'custom', mode, dec1);
+             expect(result).not.toContain(projectBudget);
+        });
+
+        it('should include custom budgets active on date', () => {
+             // Project ends Jun 30. Check on Jun 1.
+             const result = filterBudgetsByMode([projectBudget], 'custom', mode, jun1);
+             expect(result).toContain(projectBudget);
+        });
+    });
+
+    describe('Period/Type Logic', () => {
+        it('should only return custom budgets when type is "custom"', () => {
+            const all = [monthlyBudget, yearlyBudget, projectBudget];
+            const result = filterBudgetsByMode(all, 'custom', mode, jan1);
+            expect(result).toHaveLength(1);
+            expect(result[0]).toBe(projectBudget);
+        });
+
+        it('should only return monthly budgets when type is "monthly"', () => {
+            const all = [monthlyBudget, yearlyBudget, projectBudget];
+            const result = filterBudgetsByMode(all, 'monthly', mode, jan1);
+            expect(result).toHaveLength(1);
+            expect(result[0]).toBe(monthlyBudget);
+        });
+
+        it('should only return yearly budgets when type is "yearly"', () => {
+             const all = [monthlyBudget, yearlyBudget, projectBudget];
+             const result = filterBudgetsByMode(all, 'yearly', mode, jan1);
+            expect(result).toHaveLength(1);
+            expect(result[0]).toBe(yearlyBudget);
+        });
+    });
 });

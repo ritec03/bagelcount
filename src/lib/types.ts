@@ -14,3 +14,7 @@ export type BudgetSubmission = StandardBudgetInput | CustomBudgetInput;
 
 // Re-export specific types for convenience
 export type { StandardBudgetOutput, CustomBudgetOutput };
+
+// UI State Types
+export type PeriodType = 'monthly' | 'yearly';
+export type NormalizationMode = 'pro-rated' | 'full';

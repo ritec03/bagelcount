@@ -47,15 +47,27 @@ interface BudgetSunburstProps {
   budgets: BudgetAllocation[];
   transactions: Transaction[];
   isLoading?: boolean;
+  viewDate: Date;
+  periodType: 'monthly' | 'yearly';
+  normalizationMode: 'pro-rated' | 'full';
 }
 
 export function BudgetSunburst({ 
   budgets, 
   transactions,
-  isLoading: externalLoading = false 
+  isLoading: externalLoading = false,
+  viewDate,
+  periodType,
+  normalizationMode
 }: BudgetSunburstProps) {
   // Use the hook to get processed data
-  const { data, isLoading: dataLoading } = useBudgetSunburstData(budgets, transactions);
+  const { data, isLoading: dataLoading } = useBudgetSunburstData(
+    budgets, 
+    transactions, 
+    viewDate, 
+    periodType, 
+    normalizationMode
+  );
 
   const isLoading = externalLoading || dataLoading;
 
