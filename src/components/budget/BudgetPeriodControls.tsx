@@ -49,13 +49,21 @@ export function BudgetPeriodControls({
     return new Intl.DateTimeFormat('en-US', { year: 'numeric' }).format(date);
   };
 
+  const isCurrentPeriod = (() => {
+    const now = new Date();
+    if (periodType === 'monthly') {
+      return viewDate.getMonth() === now.getMonth() && viewDate.getFullYear() === now.getFullYear();
+    }
+    return viewDate.getFullYear() === now.getFullYear();
+  })();
+
   return (
     <Card className="w-full">
       <CardContent className="flex flex-col sm:flex-row gap-4 items-center justify-between py-4">
         <div className="flex items-center gap-2">
           <Select 
             value={periodType} 
-            onValueChange={(val) => onPeriodChange(val as 'monthly' | 'yearly')}
+            onValueChange={(val: PeriodType) => onPeriodChange(val)}
           >
             <SelectTrigger className="w-40">
               <Calendar className="mr-2 h-4 w-4" />
@@ -69,15 +77,25 @@ export function BudgetPeriodControls({
 
           <div className="flex items-center gap-1 border rounded-md bg-background">
             <Button variant="ghost" size="icon" onClick={handlePrevious}>
-              <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="w-36 text-center font-medium">
-              {formatDate(viewDate)}
+                {formatDate(viewDate)}
             </div>
             <Button variant="ghost" size="icon" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+            <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 ml-2"
+                onClick={() => onDateChange(new Date())}
+                disabled={isCurrentPeriod}
+            >
+                <Calendar className="h-4 w-4" />
+                Jump to Current
+            </Button>
         </div>
 
         <div className="flex items-center gap-2">
