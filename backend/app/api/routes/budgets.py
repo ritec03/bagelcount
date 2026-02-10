@@ -40,11 +40,12 @@ def create_budget(
                 siblings_used = sum(b.amount for b in siblings)
                 available = parent_budget.amount - siblings_used
                 
-                if allocation.amount > available:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Exceeds parent budget ({parent_name}). Available: {available}"
-                    )
+                # TODO implement proper budget validation on backend
+                # if allocation.amount > available:
+                #     raise HTTPException(
+                #         status_code=400, 
+                #         detail=f"Exceeds parent budget ({parent_name}). Available: {available}"
+                #     )
 
         # 2. Parent Check: Must cover Children
         children = [
@@ -54,11 +55,11 @@ def create_budget(
         ]
         if children:
             children_sum = sum(b.amount for b in children)
-            if allocation.amount < children_sum:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Insufficient for sub-categories. Required: {children_sum}"
-                )
+            # if allocation.amount < children_sum:
+            #     raise HTTPException(
+            #         status_code=400, 
+            #         detail=f"Insufficient for sub-categories. Required: {children_sum}"
+            #     )
 
     service.add_budget(allocation)
     return {"status": "ok"}
