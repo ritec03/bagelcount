@@ -1,4 +1,5 @@
 import type { StandardBudgetOutput, BudgetAllocation } from './types';
+import { generateVibrantColor } from './colorUtils';
 
 // ============================================================================
 // Types
@@ -20,12 +21,6 @@ export interface HierarchyItem {
   isGroup: boolean;
   fullPath: string;
 }
-
-// Extracted palette for consistency across components
-export const PALETTE = [
-  '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3',
-  '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'
-];
 
 // ============================================================================
 // Tree Building (Pure Logic)
@@ -93,7 +88,7 @@ export function flattenBudgetTree(
      // Determine color
      let myColor = parentColor;
      if (level === 2 && !myColor) {
-         myColor = PALETTE[colorIdx++ % PALETTE.length];
+         myColor = generateVibrantColor(colorIdx++);
      }
 
      // If this node represents a budget, add it

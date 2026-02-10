@@ -5,7 +5,8 @@ import {
   normalizeBudgetAmount,
   filterBudgetsByMode
 } from '@/lib/budgetCalculations';
-import { buildBudgetTree, PALETTE, type RawTreeNode } from '@/lib/budgetTree';
+import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetTree';
+import { generateVibrantColor } from '@/lib/colorUtils';
 import type { Transaction } from '../lib/api/types.gen';
 
 // Sunburst Chart Node Types - Discriminated Union
@@ -143,7 +144,7 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
     if (current.type === 'spacer') return current;
 
     if (level === 2 && !current.color) {
-      current.color = PALETTE[colorIdx++ % PALETTE.length];
+      current.color = generateVibrantColor(colorIdx++);
     }
 
     if (current.children) {
