@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BudgetForm } from "./BudgetForm";
-import { Plus, Calendar, Repeat, Wallet } from "lucide-react";
+import { Plus, Calendar, Repeat, Wallet, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { normalizeBudgetAmount, filterBudgetsByMode } from '@/lib/budgetCalculations';
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
+import { useBudgetListValidation } from '@/hooks/useBudgetListValidation';
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 
 interface BudgetListProps {
@@ -25,13 +26,15 @@ interface BudgetCardProps {
     budget: BudgetAllocation;
     spentAmount: number;
     onClick: () => void;
-    periodType: 'monthly' | 'yearly';
+    periodType: PeriodType;
     normalizationMode: 'pro-rated' | 'full';
+    validationError?: string | null;
+    validationWarnings?: string[];
 }
 
-function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMode }: BudgetCardProps) {
+function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMode, validationError, validationWarnings }: BudgetCardProps) {
     const isStandard = "frequency" in budget;
-    let budgetAmount = parseFloat(budget.amount as string);
+    let budgetAmount = parseFloat(budget.amount);
     
     // Apply normalization if standard budget and pro-rated mode
     if (isStandard && normalizationMode === 'pro-rated') {
@@ -51,19 +54,39 @@ function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMod
     return (
         <Card 
             onClick={onClick}
-            className="hover:bg-slate-50 transition-colors cursor-pointer"
+            className={cn(
+                "hover:bg-slate-50 transition-colors cursor-pointer",
+                validationError && "border-red-500 bg-red-50 hover:bg-red-100",
+                !validationError && validationWarnings && validationWarnings.length > 0 && "border-amber-500 bg-amber-50 hover:bg-amber-100"
+            )}
         >
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1">
                         <div className={cn(
                             "p-2 rounded-full",
-                            isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                            isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600',
+                            validationError && "bg-red-100 text-red-600",
+                            !validationError && validationWarnings && validationWarnings.length > 0 && "bg-amber-100 text-amber-600"
                         )}>
-                            {isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
+                            {validationError ? <AlertCircle className="h-4 w-4" /> : 
+                             (validationWarnings && validationWarnings.length > 0 ? <AlertCircle className="h-4 w-4" /> :
+                             (isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />))}
                         </div>
                         <div className="flex-1">
-                            <p className="font-medium">{budget.account}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium">{budget.account}</p>
+                                {validationError && (
+                                    <span className="text-xs text-red-600 font-medium px-2 py-0.5 rounded bg-red-100">
+                                        Invalid
+                                    </span>
+                                )}
+                                {!validationError && validationWarnings && validationWarnings.length > 0 && (
+                                    <span className="text-xs text-amber-600 font-medium px-2 py-0.5 rounded bg-amber-100">
+                                        Warning
+                                    </span>
+                                )}
+                            </div>
                             <p className="text-sm text-muted-foreground">
                                 {budget.currency} {budgetAmount.toFixed(2)}
                                 <span className="mx-2">•</span>
@@ -155,6 +178,9 @@ export function BudgetList({
     // Calculate spent amounts using custom hook
     const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);
 
+    // Pre-compute validation results for all standard budgets (memoized)
+    const validationResults = useBudgetListValidation(budgets);
+
     const handleSuccess = () => {
         setIsDialogOpen(false);
         setEditingBudget(null);
@@ -186,16 +212,33 @@ export function BudgetList({
                 <EmptyState />
             ) : (
                 <div className="grid gap-4">
-                    {filteredBudgets.map((budget, idx) => (
-                        <BudgetCard
-                            key={idx}
-                            budget={budget}
-                            spentAmount={spentAmounts.get(budget.account) || 0}
-                            onClick={() => openEdit(budget)}
-                            periodType={periodType}
-                            normalizationMode={normalizationMode}
-                        />
-                    ))}
+                    {filteredBudgets.map((budget, idx) => {
+                        // Look up pre-computed validation result
+                        let validationError = null;
+                        let validationWarnings: string[] = [];
+                        
+                        if ("frequency" in budget) {
+                            const key = `${budget.account}:${budget.frequency}`;
+                            const result = validationResults.get(key);
+                            if (result) {
+                                validationError = result.error;
+                                validationWarnings = result.warnings;
+                            }
+                        }
+
+                        return (
+                            <BudgetCard
+                                key={idx}
+                                budget={budget}
+                                spentAmount={spentAmounts.get(budget.account) || 0}
+                                onClick={() => openEdit(budget)}
+                                periodType={periodType}
+                                normalizationMode={normalizationMode}
+                                validationError={validationError}
+                                validationWarnings={validationWarnings}
+                            />
+                        );
+                    })}
                 </div>
             )}
 

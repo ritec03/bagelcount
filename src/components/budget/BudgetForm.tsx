@@ -121,21 +121,25 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
   const watchedAmount = watch("amount");
   const watchedType = watch("type");
   
+  const watchedFrequency = watch("frequency");
+  
   // Real-time validation hook
   const validation = useBudgetValidation(
     budgets,
     watchedAccount || "",
     parseFloat(watchedAmount) || 0,
-    watchedType || "StandardBudget"
+    watchedType || "StandardBudget",
+    watchedFrequency
   ); 
 
   const onSubmit = async (data: BudgetFormValues) => {
     try {
       // Submit-time validation check (blocks submission)
-      if (!validation.isValid) {
+      // Only block if there is a parent violation (error)
+      if (validation.error) {
         form.setError("amount", {
           type: "manual",
-          message: validation.message || "Invalid budget amount"
+          message: validation.error
         });
         return;
       }
@@ -274,13 +278,31 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
                   {/* Real-time helper text (non-blocking) */}
                   {validation.availableBudget !== null && (
                     <FormDescription>
-                      Available budget: ${validation.availableBudget.toFixed(2)}
+                      Available budget: ${validation.availableBudget.toFixed(2)}/{watchedFrequency}
                     </FormDescription>
                   )}
-                  {!validation.isValid && validation.message && (
-                    <FormDescription className="text-amber-600">
-                      {validation.message}
+                  {validation.error && (
+                    <FormDescription className="text-red-500 font-medium">
+                      {validation.error}
                     </FormDescription>
+                  )}
+                  {validation.warnings.length > 0 && (
+                     <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                        <p className="font-medium flex items-center">
+                            ⚠️ This budget is insufficient for sub-categories:
+                        </p>
+                        <ul className="list-disc list-inside mt-1">
+                            {validation.warnings.map((w, i) => (
+                                <li key={i}>{w}</li>
+                            ))}
+                        </ul>
+                        {validation.affectedChildren.length > 0 && (
+                            <div className="mt-1 text-xs">
+                                <span className="font-medium">Affected: </span>
+                                {validation.affectedChildren.map(c => `${c.account} (${c.frequency})`).join(", ")}
+                            </div>
+                        )}
+                     </div>
                   )}
                   <FormMessage />
                 </FormItem>
