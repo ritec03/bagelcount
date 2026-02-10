@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { normalizeBudgetAmount, filterBudgetsByMode } from '@/lib/budgetCalculations';
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
+import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
 import { useBudgetListValidation } from '@/hooks/useBudgetListValidation';
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 
@@ -30,9 +31,10 @@ interface BudgetCardProps {
     normalizationMode: 'pro-rated' | 'full';
     validationError?: string | null;
     validationWarnings?: string[];
+    color?: string;
 }
 
-function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMode, validationError, validationWarnings }: BudgetCardProps) {
+function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMode, validationError, validationWarnings, color }: BudgetCardProps) {
     const isStandard = "frequency" in budget;
     let budgetAmount = parseFloat(budget.amount);
     
@@ -71,6 +73,7 @@ function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMod
     return (
         <Card 
             onClick={onClick}
+            style={{ borderLeftWidth: '6px', borderLeftColor: color || 'transparent' }}
             className={cn(
                 "hover:bg-slate-50 transition-colors cursor-pointer",
                 validationError && "border-red-500 bg-red-50 hover:bg-red-100",
@@ -209,6 +212,9 @@ export function BudgetList({
     // Pre-compute validation results for all standard budgets (memoized)
     const validationResults = useBudgetListValidation(budgets);
 
+    // Compute hierarchy for rendering (memoized)
+    const hierarchyItems = useBudgetHierarchy(filteredBudgets);
+
     const handleSuccess = () => {
         setIsDialogOpen(false);
         setEditingBudget(null);
@@ -240,7 +246,13 @@ export function BudgetList({
                 <EmptyState />
             ) : (
                 <div className="grid gap-4">
-                    {filteredBudgets.map((budget, idx) => {
+                    {hierarchyItems.map((item, idx) => {
+                        // Skip if no budget attached (e.g. just a category node without a specific budget entry)
+                        // Although our flatten logic only returns nodes with budgets, we check for safety.
+                        if (!item.budget) return null;
+                        
+                        const budget = item.budget;
+
                         // Look up pre-computed validation result
                         let validationError = null;
                         let validationWarnings: string[] = [];
@@ -255,16 +267,18 @@ export function BudgetList({
                         }
 
                         return (
-                            <BudgetCard
-                                key={idx}
-                                budget={budget}
-                                spentAmount={spentAmounts.get(budget.account) || 0}
-                                onClick={() => openEdit(budget)}
-                                periodType={periodType}
-                                normalizationMode={normalizationMode}
-                                validationError={validationError}
-                                validationWarnings={validationWarnings}
-                            />
+                            <div key={idx} className="relative">
+                                <BudgetCard
+                                    budget={budget}
+                                    spentAmount={spentAmounts.get(budget.account) || 0}
+                                    onClick={() => openEdit(budget)}
+                                    periodType={periodType}
+                                    normalizationMode={normalizationMode}
+                                    validationError={validationError}
+                                    validationWarnings={validationWarnings}
+                                    color={item.color}
+                                />
+                            </div>
                         );
                     })}
                 </div>
