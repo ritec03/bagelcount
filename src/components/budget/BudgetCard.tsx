@@ -111,44 +111,46 @@ export function BudgetCard({
             <CardContent className="p-4 relative z-10 pointer-events-none">
                 <div className="flex items-center justify-between pointer-events-auto">
                     <div className="flex items-center space-x-4 flex-1 min-w-0 pointer-events-none">
-                        {/* Hierarchy Toggle */}
-                        <div className="flex-shrink-0 pointer-events-auto min-w-[32px] flex justify-center">
-                            {isGroup ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 shadow-sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onToggle?.();
-                                            }}
-                                        >
-                                            <ChevronRight className={cn(
-                                                "h-4 w-4 transition-transform duration-200 text-slate-700",
-                                                isExpanded ? "rotate-90" : ""
-                                            )} />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{isExpanded ? "Collapse" : "Expand"} child budgets</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : (
-                                <div className="w-8" /> 
-                            )}
-                        </div>
+                        <div className="flex flex-col items-center gap-2">
+                            {/* Hierarchy Toggle */}
+                            <div className="flex-shrink-0 pointer-events-auto min-w-[32px] flex justify-center">
+                                {isGroup ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full border border-slate-200 shadow-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onToggle?.();
+                                                }}
+                                            >
+                                                <ChevronRight className={cn(
+                                                    "h-4 w-4 transition-transform duration-200 text-slate-700",
+                                                    isExpanded ? "rotate-90" : ""
+                                                )} />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{isExpanded ? "Collapse" : "Expand"} child budgets</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : (
+                                    <div className="w-8" /> 
+                                )}
+                            </div>
 
-                        <div className={cn(
-                            "p-2 rounded-full flex-shrink-0",
-                            isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600',
-                            validationError && "bg-red-100 text-red-600",
-                            !validationError && validationWarnings && validationWarnings.length > 0 && "bg-amber-100 text-amber-600"
-                        )}>
-                            {validationError ? <AlertCircle className="h-4 w-4" /> : 
-                             (validationWarnings && validationWarnings.length > 0 ? <AlertCircle className="h-4 w-4" /> :
-                             (isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />))}
+                            <div className={cn(
+                                "p-2 rounded-full flex-shrink-0",
+                                isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600',
+                                validationError && "bg-red-100 text-red-600",
+                                !validationError && validationWarnings && validationWarnings.length > 0 && "bg-amber-100 text-amber-600"
+                            )}>
+                                {validationError ? <AlertCircle className="h-4 w-4" /> : 
+                                (validationWarnings && validationWarnings.length > 0 ? <AlertCircle className="h-4 w-4" /> :
+                                (isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />))}
+                            </div>
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex flex-col">
@@ -177,11 +179,11 @@ export function BudgetCard({
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {budget.currency} {budgetAmount.toFixed(2)}
-                                <span className="mx-2">•</span>
-                                {isStandard 
+                                {/* <span className="mx-2">•</span> */}
+                                {/* {isStandard 
                                     ? <span className="capitalize">{budget.frequency}</span>
                                     : <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Project</Badge>
-                                }
+                                } */}
                             </p>
                             {/* Progress Bar */}
                             <div className="mt-2 w-full">
