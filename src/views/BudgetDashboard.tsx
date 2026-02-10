@@ -4,6 +4,7 @@ import { BudgetSunburst } from "../components/budget/BudgetSunburst";
 import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls";
 import { useBudgets } from "../hooks/useBudgets";
 import { useTransactions } from "../hooks/useTransactions";
+import type { PeriodType } from "@/lib/types";
 
 export function BudgetDashboard() {
     const { budgets, isLoading, refetch } = useBudgets();
@@ -11,7 +12,7 @@ export function BudgetDashboard() {
     
     // Budget Period State
     const [viewDate, setViewDate] = useState<Date>(new Date());
-    const [periodType, setPeriodType] = useState<'monthly' | 'yearly'>('monthly');
+    const [periodType, setPeriodType] = useState<PeriodType>('monthly');
     const [normalizationMode, setNormalizationMode] = useState<'pro-rated' | 'full'>('pro-rated');
 
     return (
