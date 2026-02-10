@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { BudgetForm } from "./BudgetForm";
 import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
-import { useBudgetList } from "./useBudgetList";
+import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 
 interface BudgetListProps {
