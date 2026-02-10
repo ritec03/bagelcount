@@ -55,7 +55,7 @@ export function BudgetPeriodControls({
           value={periodType} 
           onValueChange={(val) => onPeriodChange(val as 'monthly' | 'yearly')}
         >
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-40">
             <Calendar className="mr-2 h-4 w-4" />
             <SelectValue placeholder="Period" />
           </SelectTrigger>
@@ -69,7 +69,7 @@ export function BudgetPeriodControls({
           <Button variant="ghost" size="icon" onClick={handlePrevious}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="w-[140px] text-center font-medium">
+          <div className="w-36 text-center font-medium">
             {formatDate(viewDate)}
           </div>
           <Button variant="ghost" size="icon" onClick={handleNext}>
@@ -84,7 +84,7 @@ export function BudgetPeriodControls({
           value={normalizationMode} 
           onValueChange={(val) => onNormalizationChange(val as 'pro-rated' | 'full')}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-48">
             <Calculator className="mr-2 h-4 w-4" />
             <SelectValue placeholder="Mode" />
           </SelectTrigger>
