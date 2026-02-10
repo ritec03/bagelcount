@@ -31,7 +31,7 @@ export function CollapsedPlaceholder({ count, onClick }: CollapsedPlaceholderPro
         >
             <div className="bg-slate-100 border border-t-0 border-slate-200 rounded-b-lg shadow-sm hover:bg-slate-200 transition-colors h-8 flex items-end justify-center pb-1">
                 <span className="text-[10px] text-slate-500 font-medium tracking-wide uppercase">
-                    {count} hidden budget{count !== 1 ? 's' : ''}
+                    {count} collapsed budget{count !== 1 ? 's' : ''}
                 </span>
             </div>
         </div>
