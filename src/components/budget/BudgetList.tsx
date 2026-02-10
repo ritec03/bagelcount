@@ -51,6 +51,23 @@ function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMod
         return 'bg-green-500';
     };
     
+    // Parse account name for breadcrumbs
+    const accountParts = budget.account.split(':');
+    let displayParts = accountParts;
+    
+    // Remove "Expenses" prefix if present
+    if (displayParts[0] === "Expenses") {
+        displayParts = displayParts.slice(1);
+    }
+    
+    const displayName = displayParts.length > 0 ? displayParts[displayParts.length - 1] : budget.account;
+    let breadcrumbPath = displayParts.length > 1 ? displayParts.slice(0, -1).join(' > ') + ' >' : null;
+
+    // Truncate breadcrumb from start if too long
+    if (breadcrumbPath && breadcrumbPath.length > 30) {
+        breadcrumbPath = '...' + breadcrumbPath.slice(-27);
+    }
+
     return (
         <Card 
             onClick={onClick}
@@ -62,9 +79,9 @@ function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMod
         >
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 flex-1">
+                    <div className="flex items-center space-x-4 flex-1 min-w-0">
                         <div className={cn(
-                            "p-2 rounded-full",
+                            "p-2 rounded-full flex-shrink-0",
                             isStandard ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600',
                             validationError && "bg-red-100 text-red-600",
                             !validationError && validationWarnings && validationWarnings.length > 0 && "bg-amber-100 text-amber-600"
@@ -73,26 +90,37 @@ function BudgetCard({ budget, spentAmount, onClick, periodType, normalizationMod
                              (validationWarnings && validationWarnings.length > 0 ? <AlertCircle className="h-4 w-4" /> :
                              (isStandard ? <Repeat className="h-4 w-4" /> : <Calendar className="h-4 w-4" />))}
                         </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                                <p className="font-medium">{budget.account}</p>
-                                {validationError && (
-                                    <span className="text-xs text-red-600 font-medium px-2 py-0.5 rounded bg-red-100">
-                                        Invalid
+                        <div className="flex-1 min-w-0">
+                            <div className="flex flex-col">
+                                {breadcrumbPath && (
+                                    <span className="text-xs text-muted-foreground truncate leading-none mb-0.5">
+                                        {breadcrumbPath}
                                     </span>
                                 )}
-                                {!validationError && validationWarnings && validationWarnings.length > 0 && (
-                                    <span className="text-xs text-amber-600 font-medium px-2 py-0.5 rounded bg-amber-100">
-                                        Warning
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <p className="font-medium truncate leading-tight" title={budget.account}>
+                                        {displayName}
+                                    </p>
+                                    <div className="flex-shrink-0 flex gap-1">
+                                        {validationError && (
+                                            <span className="text-[10px] text-red-600 font-bold px-1.5 py-0.5 rounded bg-red-100 uppercase tracking-wide">
+                                                Invalid
+                                            </span>
+                                        )}
+                                        {!validationError && validationWarnings && validationWarnings.length > 0 && (
+                                            <span className="text-[10px] text-amber-600 font-bold px-1.5 py-0.5 rounded bg-amber-100 uppercase tracking-wide">
+                                                Warning
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground mt-1">
                                 {budget.currency} {budgetAmount.toFixed(2)}
                                 <span className="mx-2">•</span>
                                 {isStandard 
                                     ? <span className="capitalize">{budget.frequency}</span>
-                                    : <Badge variant="secondary">Project</Badge>
+                                    : <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Project</Badge>
                                 }
                             </p>
                             {/* Progress Bar */}
