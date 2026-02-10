@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMonthlySpent, calculatePeriodSpent, filterBudgetsByMode } from './budgetCalculations';
+import { calculateMonthlySpent, calculatePeriodSpent, filterBudgetsByMode, normalizeBudgetAmount } from './budgetCalculations';
 import type { Transaction } from './api/types.gen';
 import type { BudgetAllocation, NormalizationMode } from './types';
 
@@ -597,6 +597,50 @@ describe('filterBudgetsByMode', () => {
              const result = filterBudgetsByMode(all, 'yearly', mode, jan1);
             expect(result).toHaveLength(1);
             expect(result[0]).toBe(yearlyBudget);
+        });
+    });
+});
+
+describe('normalizeBudgetAmount', () => {
+    describe('to monthly', () => {
+        it('yearly → monthly: divides by 12', () => {
+            expect(normalizeBudgetAmount(1200, 'yearly', 'monthly')).toBe(100);
+        });
+
+        it('quarterly → monthly: divides by 3', () => {
+            expect(normalizeBudgetAmount(300, 'quarterly', 'monthly')).toBe(100);
+        });
+
+        it('monthly → monthly: identity', () => {
+            expect(normalizeBudgetAmount(100, 'monthly', 'monthly')).toBe(100);
+        });
+    });
+
+    describe('to yearly', () => {
+        it('monthly → yearly: multiplies by 12', () => {
+            expect(normalizeBudgetAmount(100, 'monthly', 'yearly')).toBe(1200);
+        });
+
+        it('quarterly → yearly: multiplies by 4', () => {
+            expect(normalizeBudgetAmount(300, 'quarterly', 'yearly')).toBe(1200);
+        });
+
+        it('yearly → yearly: identity', () => {
+            expect(normalizeBudgetAmount(1200, 'yearly', 'yearly')).toBe(1200);
+        });
+    });
+
+    describe('to quarterly', () => {
+        it('monthly → quarterly: multiplies by 3', () => {
+            expect(normalizeBudgetAmount(100, 'monthly', 'quarterly')).toBe(300);
+        });
+
+        it('yearly → quarterly: divides by 4', () => {
+            expect(normalizeBudgetAmount(1200, 'yearly', 'quarterly')).toBe(300);
+        });
+
+        it('quarterly → quarterly: identity', () => {
+            expect(normalizeBudgetAmount(300, 'quarterly', 'quarterly')).toBe(300);
         });
     });
 });

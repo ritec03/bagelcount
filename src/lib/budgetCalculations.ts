@@ -86,22 +86,22 @@ export function calculateMonthlySpent(
 }
 
 /**
- * Normalize a budget amount based on its frequency and the current view period.
- * e.g., Convert a yearly budget of 1200 to a monthly amount of 100.
+ * Normalize a budget amount from one frequency to another.
+ * Uses annual amount as an intermediate representation for any-to-any conversion.
  */
 export function normalizeBudgetAmount(
   amount: number,
-  budgetFrequency: 'monthly' | 'quarterly' | 'yearly',
-  viewPeriod: 'monthly' | 'yearly'
+  budgetFrequency: PeriodType,
+  viewPeriod: PeriodType
 ): number {
-  if (viewPeriod === 'monthly') {
-    if (budgetFrequency === 'yearly') return amount / 12;
-    if (budgetFrequency === 'quarterly') return amount / 3;
-  } else if (viewPeriod === 'yearly') {
-    if (budgetFrequency === 'monthly') return amount * 12;
-    if (budgetFrequency === 'quarterly') return amount * 4;
-  }
-  return amount;
+  if (budgetFrequency === viewPeriod) return amount;
+
+  // Step 1: Convert to annual
+  const annualMultipliers: Record<string, number> = { monthly: 12, quarterly: 4, yearly: 1 };
+  const annual = amount * annualMultipliers[budgetFrequency];
+
+  // Step 2: Convert from annual to target
+  return annual / annualMultipliers[viewPeriod];
 }
 
 /**
