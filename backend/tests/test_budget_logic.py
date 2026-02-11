@@ -24,7 +24,7 @@ def test_resolve_standard_budget_conflict():
   frequency: "monthly"
   created_at: "50"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     # Should resolve to exactly 1 budget for this key
@@ -50,7 +50,7 @@ def test_resolve_different_tags_no_conflict():
   created_at: "200"
   tags: "project-b"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 2
@@ -73,7 +73,7 @@ def test_resolve_tag_order_normalization():
   created_at: "200"
   tags: "b,a"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     # Should resolve to 1 because tags are effectively same set
@@ -93,7 +93,7 @@ def test_standard_vs_custom_coexistence():
   end_date: "2024-01-20"
   created_at: "200"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 2
@@ -107,7 +107,7 @@ def test_malformed_metadata_ignored():
 2024-01-01 custom "budget" Expenses:Food 500.00 USD
   somedata: "check"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 0
@@ -125,7 +125,7 @@ def test_missing_created_at_defaults_low():
   frequency: "monthly"
   created_at: "10"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 1
@@ -140,7 +140,7 @@ def test_ambiguous_metadata_priority():
   end_date: "2024-01-31" 
 """
     # Our logic `if "frequency" ... elif "end_date"` implies frequency wins.
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 1
@@ -154,7 +154,7 @@ def test_invalid_date_format_in_metadata_is_skipped():
   start_date: "not-a-date"
   frequency: "monthly"
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 0
@@ -167,7 +167,7 @@ def test_whitespace_tags_normalization():
   frequency: "monthly"
   tags: " a ,  b  "
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
     budgets = service.get_active_budgets()
     
     assert len(budgets) == 1

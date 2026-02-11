@@ -11,7 +11,7 @@ def mock_beancount_service_accounts():
 2024-01-01 open Assets:Checking USD
 2024-01-01 open Expenses:Food USD
 """
-    return BeancountService(content, loader_func=loader.load_string)
+    return BeancountService(content, budget_file="dummy.bean", loader_func=loader.load_string)
 
 def test_get_accounts():
     """Verify endpoint returns list of accounts."""
