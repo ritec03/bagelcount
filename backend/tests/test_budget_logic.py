@@ -1,8 +1,8 @@
-
 from decimal import Decimal
 from app.services.beancount import BeancountService
 from app.models.domain import StandardBudget, CustomBudget
 from beancount import loader
+
 
 def test_resolve_standard_budget_conflict():
     """Verify that among conflicting Standard budgets, the one with higher created_at wins."""
@@ -24,14 +24,15 @@ def test_resolve_standard_budget_conflict():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     # Should resolve to exactly 1 budget for this key
     assert len(budgets) == 1
     winner = budgets[0]
-    
+
     assert isinstance(winner, StandardBudget)
     assert winner.amount == Decimal("600.00")
     assert winner.created_at == 200
+
 
 def test_resolve_different_tags_no_conflict():
     """Verify that identical budgets with different tags are NOT conflicts (Parallel Dimensions)."""
@@ -50,11 +51,12 @@ def test_resolve_different_tags_no_conflict():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 2
     amounts = {b.amount for b in budgets}
     assert Decimal("500.00") in amounts
     assert Decimal("600.00") in amounts
+
 
 def test_resolve_tag_order_normalization():
     """Verify that tag order doesn't matter for conflict key."""
@@ -73,10 +75,11 @@ def test_resolve_tag_order_normalization():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     # Should resolve to 1 because tags are effectively same set
     assert len(budgets) == 1
     assert budgets[0].amount == Decimal("600.00")
+
 
 def test_standard_vs_custom_coexistence():
     """Verify Standard and Custom budgets for same account coexist (Dimension A vs B)."""
@@ -93,11 +96,12 @@ def test_standard_vs_custom_coexistence():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 2
     types = {type(b) for b in budgets}
     assert StandardBudget in types
     assert CustomBudget in types
+
 
 def test_malformed_metadata_ignored():
     """Verify directives with missing required metadata are ignored safely."""
@@ -107,8 +111,9 @@ def test_malformed_metadata_ignored():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 0
+
 
 def test_missing_created_at_defaults_low():
     """Verify missing created_at is treated as 0 (loses to explicit timestamp)."""
@@ -125,9 +130,10 @@ def test_missing_created_at_defaults_low():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 1
     assert budgets[0].amount == Decimal("600.00")
+
 
 def test_ambiguous_metadata_priority():
     """Verify that if both frequency and end_date exist, frequency takes priority (StandardBudget)."""
@@ -140,10 +146,11 @@ def test_ambiguous_metadata_priority():
     # Our logic `if "frequency" ... elif "end_date"` implies frequency wins.
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 1
     assert isinstance(budgets[0], StandardBudget)
     assert budgets[0].frequency == "monthly"
+
 
 def test_invalid_date_format_in_metadata_is_skipped():
     """Verify directives with unparseable dates in metadata are skipped."""
@@ -154,8 +161,9 @@ def test_invalid_date_format_in_metadata_is_skipped():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 0
+
 
 def test_whitespace_tags_normalization():
     """Verify tags with extra whitespace are cleaned up."""
@@ -167,7 +175,7 @@ def test_whitespace_tags_normalization():
 """
     service = BeancountService(content, loader_func=loader.load_string)
     budgets = service.get_active_budgets()
-    
+
     assert len(budgets) == 1
     assert "a" in budgets[0].tags
     assert "b" in budgets[0].tags
