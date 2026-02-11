@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useTransactions } from "../../hooks/useTransactions";
+import { useState } from "react";
+import { useBudgetSpentAmounts } from "../../hooks/useBudgetSpentAmounts";
 import { BudgetForm } from "./BudgetForm";
 import type { BudgetAllocation } from "../../lib/types";
 import { Plus, Calendar, Repeat, Wallet } from "lucide-react";
@@ -127,44 +127,11 @@ function EmptyState() {
 }
 
 export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListProps) {
-    const { transactions, isLoading: isTxLoading } = useTransactions();
-    
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
 
-    // Memoized calculation of spent amounts for all accounts
-    const spentAmounts = useMemo(() => {
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth(); // 0-indexed
-
-        const amounts = new Map<string, number>();
-
-        transactions.forEach(tx => {
-            const txDate = new Date(tx.date);
-            if (txDate.getFullYear() !== currentYear || txDate.getMonth() !== currentMonth) {
-                return;
-            }
-
-            if (!tx.postings) return;
-
-            tx.postings.forEach(posting => {
-                // For each account in budgets, check if this posting matches
-                budgets.forEach(budget => {
-                    const accountName = budget.account;
-                    if (posting.account === accountName || posting.account.startsWith(accountName + ":")) {
-                        const amountStr = posting.units.split(' ')[0];
-                        const amount = parseFloat(amountStr);
-                        if (!isNaN(amount)) {
-                            amounts.set(accountName, (amounts.get(accountName) || 0) + amount);
-                        }
-                    }
-                });
-            });
-        });
-
-        return amounts;
-    }, [transactions, budgets]);
+    // Calculate spent amounts using custom hook
+    const spentAmounts = useBudgetSpentAmounts(budgets);
 
     const handleSuccess = () => {
         setIsDialogOpen(false);
@@ -191,7 +158,7 @@ export function BudgetList({ budgets, isLoading, onBudgetChange }: BudgetListPro
                 </Button>
             </div>
 
-            {(isLoading || isTxLoading) ? (
+            {isLoading ? (
                 <BudgetListSkeleton />
             ) : budgets.length === 0 ? (
                 <EmptyState />

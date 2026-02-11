@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "app": "BagelCount Backend"}
