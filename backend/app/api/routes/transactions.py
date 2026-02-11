@@ -5,11 +5,12 @@ from datetime import date
 
 router = APIRouter()
 
+
 @router.get("/", response_model=list[Transaction])
 def get_transactions(
     from_date: date | None = Query(None),
     to_date: date | None = Query(None),
-    service: BeancountService = Depends(get_beancount_service)
+    service: BeancountService = Depends(get_beancount_service),
 ):
     """
     Returns a list of transactions.

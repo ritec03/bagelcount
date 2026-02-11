@@ -38,6 +38,7 @@ export function useBudgets(filters: {
 
     useEffect(() => {
         fetchBudgets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.date, filters.startDate, filters.endDate]);
 
     return { 
