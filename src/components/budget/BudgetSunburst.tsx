@@ -48,7 +48,7 @@ interface BudgetSunburstProps {
   transactions: Transaction[];
   isLoading?: boolean;
   viewDate: Date;
-  periodType: 'monthly' | 'yearly';
+  periodType: 'monthly' | 'yearly' | 'quarterly';
   normalizationMode: 'pro-rated' | 'full';
 }
 
