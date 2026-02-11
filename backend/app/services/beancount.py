@@ -1,17 +1,29 @@
 from beancount import loader
-from beancount.core.data import Transaction as BeanTransaction, Open, Close
+from beancount.core.data import Open, Close
 from app.core.config import settings
 from datetime import date
 from typing import Any
 from collections.abc import Callable
-from app.models.domain import Account, Transaction as DomainTransaction, Posting, BudgetAllocation, StandardBudget, CustomBudget
+from app.models.domain import (
+    Account,
+    Transaction as DomainTransaction,
+    Posting,
+    BudgetAllocation,
+    StandardBudget,
+    CustomBudget,
+)
 from beancount.core.data import Transaction, Amount, Custom
 from beancount.core import account
 from beancount.parser import printer
 import os
+import time
+from decimal import Decimal
+
 
 class BeancountService:
-    def __init__(self, filepath: str, budget_file: str, loader_func: Callable = loader.load_file):
+    def __init__(
+        self, filepath: str, budget_file: str, loader_func: Callable = loader.load_file
+    ):
         self.filepath = filepath
         self.budget_file = budget_file
         self.loader_func = loader_func
@@ -34,7 +46,9 @@ class BeancountService:
             self.load()
         return self._entries
 
-    def get_transactions(self, start_date: date | None = None, end_date: date | None = None) -> list[DomainTransaction]:
+    def get_transactions(
+        self, start_date: date | None = None, end_date: date | None = None
+    ) -> list[DomainTransaction]:
         txns = []
         for entry in self.entries:
             if isinstance(entry, Transaction):
@@ -47,19 +61,23 @@ class BeancountService:
                 postings = []
                 for p in entry.postings:
                     # Posting units is an Amount(number, currency)
-                    postings.append(Posting(
-                        account=p.account,
-                        units=p.units.number,
-                        currency=p.units.currency
-                    ))
-                
-                txns.append(DomainTransaction(
-                    date=entry.date,
-                    payee=entry.payee,
-                    narration=entry.narration,
-                    flag=entry.flag,
-                    postings=postings
-                ))
+                    postings.append(
+                        Posting(
+                            account=p.account,
+                            units=p.units.number,
+                            currency=p.units.currency,
+                        )
+                    )
+
+                txns.append(
+                    DomainTransaction(
+                        date=entry.date,
+                        payee=entry.payee,
+                        narration=entry.narration,
+                        flag=entry.flag,
+                        postings=postings,
+                    )
+                )
         return txns
 
     def get_accounts(self) -> list[Account]:
@@ -98,9 +116,7 @@ class BeancountService:
         Format: YYYY-MM-DD custom "budget" Account Amount Currency
         Metadata: start_date, end_date (opt), frequency (opt), tags, created_at
         """
-        import time
-        from decimal import Decimal
-        
+
         # Ensure created_at is set
         if allocation.created_at is None:
             allocation.created_at = int(time.time())
@@ -121,37 +137,29 @@ class BeancountService:
             meta["tags"] = ",".join(allocation.tags)
 
         # Construct directive using Native Objects
-    
+
         directive_date = date.today()
-        
+
         # Convert amount to Decimal for Amount
         amount_decimal = Decimal(str(allocation.amount))
         amount_obj = Amount(amount_decimal, allocation.currency)
-        
+
         # Values: Account (String), Amount (Amount)
         # Printer expects values to be tuples of (value, dtype)
-        values = [
-            (allocation.account, account.TYPE), 
-            (amount_obj, Amount)
-        ]
-        
-        entry = Custom(
-            meta=meta,
-            date=directive_date,
-            type="budget",
-            values=values
-        )
-        
+        values = [(allocation.account, account.TYPE), (amount_obj, Amount)]
+
+        entry = Custom(meta=meta, date=directive_date, type="budget", values=values)
+
         # Generate string
         entry_string = printer.format_entry(entry)
-        
+
         # Ensure directory exists
         os.makedirs(os.path.dirname(self.budget_file) or ".", exist_ok=True)
-        
+
         # Write to separate budget file
         with open(self.budget_file, "a") as f:
             f.write("\n" + entry_string)
-        
+
         self._loaded = False
 
     def get_active_budgets(
@@ -233,7 +241,7 @@ class BeancountService:
         """
         if not os.path.exists(self.filepath):
             return False
-            
+
         # Calculate expected relative path
         main_dir = os.path.dirname(self.filepath) or "."
         try:
@@ -241,16 +249,18 @@ class BeancountService:
         except ValueError:
             # Paths might be on different drives or incompatible
             return False
-            
+
         # Beancount include directive: include "path/to/file.bean"
         expected_directive = f'include "{rel_path}"'
-        
+
         try:
             with open(self.filepath, "r", encoding="utf-8") as f:
                 content = f.read()
                 return expected_directive in content
         except Exception:
             return False
+
+
 # Dependency for FastAPI
 def get_beancount_service():
     return BeancountService(settings.beancount_file, settings.budget_file)
