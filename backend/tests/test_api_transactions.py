@@ -22,7 +22,9 @@ def mock_beancount_service():
   Assets:Checking  -30.00 USD
   Expenses:Food     30.00 USD
 """
-    return BeancountService(content, loader_func=loader.load_string)
+    return BeancountService(
+        content, budget_file="dummy.bean", loader_func=loader.load_string
+    )
 
 
 @pytest.fixture(autouse=True)

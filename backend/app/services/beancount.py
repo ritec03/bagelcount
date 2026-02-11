@@ -1,22 +1,31 @@
 from beancount import loader
-from beancount.core.data import Transaction as BeanTransaction, Open, Close
+from beancount.core.data import Open, Close
 from app.core.config import settings
 from datetime import date
 from typing import Any
 from collections.abc import Callable
 from app.models.domain import (
     Account,
-    Transaction,
+    Transaction as DomainTransaction,
     Posting,
     BudgetAllocation,
     StandardBudget,
     CustomBudget,
 )
+from beancount.core.data import Transaction, Amount, Custom
+from beancount.core import account
+from beancount.parser import printer
+import os
+import time
+from decimal import Decimal
 
 
 class BeancountService:
-    def __init__(self, filepath: str, loader_func: Callable = loader.load_file):
+    def __init__(
+        self, filepath: str, budget_file: str, loader_func: Callable = loader.load_file
+    ):
         self.filepath = filepath
+        self.budget_file = budget_file
         self.loader_func = loader_func
         self._entries = []
         self._errors = []
@@ -39,10 +48,10 @@ class BeancountService:
 
     def get_transactions(
         self, start_date: date | None = None, end_date: date | None = None
-    ) -> list[Transaction]:
+    ) -> list[DomainTransaction]:
         txns = []
         for entry in self.entries:
-            if isinstance(entry, BeanTransaction):
+            if isinstance(entry, Transaction):
                 # Apply Date Filtering
                 if start_date and entry.date < start_date:
                     continue
@@ -61,7 +70,7 @@ class BeancountService:
                     )
 
                 txns.append(
-                    Transaction(
+                    DomainTransaction(
                         date=entry.date,
                         payee=entry.payee,
                         narration=entry.narration,
@@ -103,11 +112,10 @@ class BeancountService:
 
     def add_budget(self, allocation: BudgetAllocation) -> None:
         """
-        Appends a budget directive to the beancount file.
+        Appends a budget directive to the budget file using Beancount printer.
         Format: YYYY-MM-DD custom "budget" Account Amount Currency
         Metadata: start_date, end_date (opt), frequency (opt), tags, created_at
         """
-        import time
 
         # Ensure created_at is set
         if allocation.created_at is None:
@@ -125,40 +133,32 @@ class BeancountService:
         elif isinstance(allocation, CustomBudget):
             meta["end_date"] = allocation.end_date.isoformat()
 
-        # Tags handling in metadata?
-        # Usually tags are appended to the directive line like #tag1 #tag2,
-        # OR stored in metadata. usage: custom "budget" Acct Amt Curr #tag1
-        # Let's put them in metadata for cleaner separation as per plan,
-        # unless beancount native tags are preferred. Plan said "metadata".
         if allocation.tags:
             meta["tags"] = ",".join(allocation.tags)
 
-        # Construct directive
-        # 2024-01-01 custom "budget" Expenses:Food 500.00 USD
+        # Construct directive using Native Objects
 
-        # We use start_date as the directive date (Date-Matched logic) OR
-        # do we use Today?
-        # Plan says: "We use the Directive Date as the 'Created At' timestamp."
-        # Wait, plan said: "Recommendation: Date-Matched Last-One-Wins... We use the Directive Date as the 'Created At' timestamp."
-        # Actually in Round 2:
-        # "We use the Directive Date as the 'Created At' timestamp."
-        # BUT we also added `created_at` integer metadata for precision.
-        # So directive date = today (creation date).
+        directive_date = date.today()
 
-        directive_date = date.today().isoformat()
+        # Convert amount to Decimal for Amount
+        amount_decimal = Decimal(str(allocation.amount))
+        amount_obj = Amount(amount_decimal, allocation.currency)
 
-        # Format metadata block
-        #   key: "value"
-        meta_lines = []
-        for k, v in meta.items():
-            meta_lines.append(f'  {k}: "{v}"')
+        # Values: Account (String), Amount (Amount)
+        # Printer expects values to be tuples of (value, dtype)
+        values = [(allocation.account, account.TYPE), (amount_obj, Amount)]
 
-        directive = f'{directive_date} custom "budget" {allocation.account} {allocation.amount} {allocation.currency}\n'
-        if meta_lines:
-            directive += "\n".join(meta_lines) + "\n"
+        entry = Custom(meta=meta, date=directive_date, type="budget", values=values)
 
-        with open(self.filepath, "a") as f:
-            f.write("\n" + directive)
+        # Generate string
+        entry_string = printer.format_entry(entry)
+
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(self.budget_file) or ".", exist_ok=True)
+
+        # Write to separate budget file
+        with open(self.budget_file, "a") as f:
+            f.write("\n" + entry_string)
 
         self._loaded = False
 
@@ -234,7 +234,33 @@ class BeancountService:
 
         return resolved_budgets
 
+    def check_budget_include(self) -> bool:
+        """
+        Checks if the main ledger file contains an include directive for the budget file.
+        Returns True if the include directive is present, False otherwise.
+        """
+        if not os.path.exists(self.filepath):
+            return False
+
+        # Calculate expected relative path
+        main_dir = os.path.dirname(self.filepath) or "."
+        try:
+            rel_path = os.path.relpath(self.budget_file, main_dir)
+        except ValueError:
+            # Paths might be on different drives or incompatible
+            return False
+
+        # Beancount include directive: include "path/to/file.bean"
+        expected_directive = f'include "{rel_path}"'
+
+        try:
+            with open(self.filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+                return expected_directive in content
+        except Exception:
+            return False
+
 
 # Dependency for FastAPI
 def get_beancount_service():
-    return BeancountService(settings.beancount_file)
+    return BeancountService(settings.beancount_file, settings.budget_file)

@@ -14,7 +14,9 @@ def test_load_valid_string():
   Equity:Opening-Balances
 """
     # We inject loader.load_string instead of load_file
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(
+        content, budget_file="dummy.bean", loader_func=loader.load_string
+    )
 
     # Act
     txns = service.get_transactions()
@@ -28,7 +30,9 @@ def test_load_valid_string():
 
 def test_empty_string():
     """Verify empty content returns no transactions."""
-    service = BeancountService("", loader_func=loader.load_string)
+    service = BeancountService(
+        "", budget_file="dummy.bean", loader_func=loader.load_string
+    )
     assert len(service.get_transactions()) == 0
 
 
@@ -42,7 +46,9 @@ def test_lazy_loading():
         call_count += 1
         return ([], [], {})
 
-    service = BeancountService("dummy", loader_func=mock_loader)
+    service = BeancountService(
+        "dummy", budget_file="dummy.bean", loader_func=mock_loader
+    )
     assert call_count == 0
 
     _ = service.entries
@@ -60,7 +66,9 @@ def test_get_accounts():
 2024-01-01 open Income:Salary USD
 2024-02-01 close Assets:OldBank
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(
+        content, budget_file="dummy.bean", loader_func=loader.load_string
+    )
 
     accounts = service.get_accounts()
 
@@ -80,14 +88,16 @@ def test_get_transactions_returns_pydantic():
   Expenses:Food  10.00 USD
   Assets:Cash   -10.00 USD
 """
-    service = BeancountService(content, loader_func=loader.load_string)
+    service = BeancountService(
+        content, budget_file="dummy.bean", loader_func=loader.load_string
+    )
 
     txns = service.get_transactions()
 
     # Verify top level
     assert len(txns) == 1
     t = txns[0]
-    # Check it's our Pydantic model (by checking a method or type, or just attr access)
+    # Check it's our Pydantic model
     assert t.payee == "Store"
     assert len(t.postings) == 2
 
@@ -98,13 +108,19 @@ def test_get_transactions_returns_pydantic():
     assert p1.currency == "USD"
 
 
-def test_add_budget_appends_to_file(tmp_path):
-    """Verify add_budget appends a correctly formatted directive to the file."""
-    # Setup temp file
-    bean_file = tmp_path / "main.bean"
-    bean_file.write_text("2024-01-01 open Expenses:Food USD\n")
+def test_add_budget_writes_to_segregated_file(tmp_path):
+    """Verify add_budget writes to the budget file, not the main file."""
+    # Setup temp files
+    main_file = tmp_path / "main.bean"
+    budget_file = tmp_path / "budgets.bean"
 
-    service = BeancountService(str(bean_file))
+    # Beancount files must be valid UTF-8
+    main_file.write_text(
+        'include "budgets.bean"\n2024-01-01 open Expenses:Food USD\n', encoding="utf-8"
+    )
+    budget_file.write_text("", encoding="utf-8")
+
+    service = BeancountService(str(main_file), budget_file=str(budget_file))
 
     allocation = StandardBudget(
         account="Expenses:Food",
@@ -117,15 +133,66 @@ def test_add_budget_appends_to_file(tmp_path):
     # Act
     service.add_budget(allocation)
 
-    # Assert
-    content = bean_file.read_text()
-
-    # Directive date is now today
+    # Assert - Check Budget File
+    budget_content = budget_file.read_text(encoding="utf-8")
     today_str = date.today().isoformat()
-    expected_directive_start = f'{today_str} custom "budget" Expenses:Food 500.00 USD'
 
-    assert expected_directive_start in content
-    assert 'start_date: "2025-01-01"' in content
-    assert 'frequency: "monthly"' in content
-    # Ensure it didn't overwrite
-    assert "open Expenses:Food USD" in content
+    # Check for custom directive in budget file
+    assert f'{today_str} custom "budget" Expenses:Food' in budget_content
+    # Depending on float/decimal quantization, check roughly
+    assert "500.0" in budget_content
+    assert "USD" in budget_content
+
+    # Metadata checks
+    assert 'start_date: "2025-01-01"' in budget_content
+    assert 'frequency: "monthly"' in budget_content
+
+    # Assert - Check Main File
+    main_content = main_file.read_text(encoding="utf-8")
+    assert 'custom "budget"' not in main_content
+
+    # Verify Transparency (Load via Main)
+    # Re-instantiate service to trigger load (or call internal load)
+    # BeancountService(..., loader_func=loader.load_file) uses real filesystem
+    service_load = BeancountService(str(main_file), budget_file=str(budget_file))
+    txns = service_load.entries
+
+    # Filter for budget directives
+    budget_entries = [e for e in txns if hasattr(e, "type") and e.type == "budget"]
+    assert len(budget_entries) == 1
+    assert len(budget_entries) == 1
+    assert budget_entries[0].values[0].value == "Expenses:Food"
+
+
+def test_check_budget_include(tmp_path):
+    """Verify check_budget_include logic for relative paths."""
+    # Scenario 1: Include exists (Same Dir)
+    main_file = tmp_path / "main.bean"
+    budget_file = tmp_path / "budgets.bean"
+
+    main_file.write_text('include "budgets.bean"\n', encoding="utf-8")
+
+    service = BeancountService(str(main_file), budget_file=str(budget_file))
+    assert service.check_budget_include() is True
+
+    # Scenario 2: Include missing
+    main_file.write_text('option "title" "No Include"\n', encoding="utf-8")
+    assert service.check_budget_include() is False
+
+    # Scenario 3: Include exists (Sub Dir)
+    # Re-setup
+    subdir = tmp_path / "sub"
+    subdir.mkdir()
+    sub_budget = subdir / "sub_budgets.bean"
+
+    # Main file should have include "sub/sub_budgets.bean"
+    main_file.write_text('include "sub/sub_budgets.bean"\n', encoding="utf-8")
+
+    service_sub = BeancountService(str(main_file), budget_file=str(sub_budget))
+    assert service_sub.check_budget_include() is True
+
+    # Scenario 4: Main file missing
+    missing_service = BeancountService(
+        str(tmp_path / "missing.bean"), budget_file="dummy"
+    )
+    assert missing_service.check_budget_include() is False
