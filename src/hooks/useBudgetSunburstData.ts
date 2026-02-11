@@ -5,16 +5,10 @@ import {
   normalizeBudgetAmount,
   filterBudgetsByMode
 } from '@/lib/budgetCalculations';
+import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetTree';
+import { generateVibrantColor } from '@/lib/colorUtils';
 import type { Transaction } from '../lib/api/types.gen';
 
-// Extracted constant as requested by audit
-const SPACER_COLOR = 'transparent';
-
-// Extracted palette as requested by audit
-const PALETTE = [
-  '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3',
-  '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'
-];
 // Sunburst Chart Node Types - Discriminated Union
 
 // Base properties shared by all node types
@@ -68,50 +62,6 @@ export type SunburstNode = CategoryNode | BudgetNode | SpacerNode;
 // ============================================================================
 
 /**
- * Intermediate tree structure before business logic is applied
- */
-interface RawTreeNode {
-  name: string;
-  children: Map<string, RawTreeNode>;
-  budget?: StandardBudgetOutput;
-  fullPath?: string;
-}
-
-/**
- * Step 1: Build a raw tree structure from flat budget paths
- * Pure function - just builds hierarchy, no calculations or colors
- */
-function buildBudgetTree(budgets: StandardBudgetOutput[]): RawTreeNode {
-  const root: RawTreeNode = {
-    name: 'Budget',
-    children: new Map()
-  };
-
-  budgets.forEach(budget => {
-    const parts = budget.account.split(':');
-    let current = root;
-
-    parts.forEach((part, index) => {
-      if (!current.children.has(part)) {
-        current.children.set(part, {
-          name: part,
-          children: new Map()
-        });
-      }
-      current = current.children.get(part)!;
-
-      // Mark as budget node if this is the final part
-      if (index === parts.length - 1) {
-        current.budget = budget;
-        current.fullPath = budget.account;
-      }
-    });
-  });
-
-  return root;
-}
-
-/**
  * Step 2: Enrich tree with spending data and calculate totals
  * Pure function - takes raw tree, returns tree with numbers
  */
@@ -145,7 +95,7 @@ function enrichWithSpending(
         type: 'spacer',
         name: 'Unallocated',
         value: remainder,
-        color: SPACER_COLOR
+        color: 'transparent'
       });
     }
 
@@ -194,7 +144,7 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
     if (current.type === 'spacer') return current;
 
     if (level === 2 && !current.color) {
-      current.color = PALETTE[colorIdx++ % PALETTE.length];
+      current.color = generateVibrantColor(colorIdx++);
     }
 
     if (current.children) {
@@ -284,16 +234,6 @@ export function useBudgetSunburstData(
     // TODO: Support custom budgets in tree if needed, for now filter valid ones.
     const validBudgets = normalizedBudgets.filter((b): b is StandardBudgetOutput => 'frequency' in b);
     
-    // Group budgets by top-level category (e.g. "Expenses")
-    const categories = new Map<string, StandardBudgetOutput[]>();
-    validBudgets.forEach(budget => {
-      const topLevel = budget.account.split(':')[0];
-      if (!categories.has(topLevel)) {
-        categories.set(topLevel, []);
-      }
-      categories.get(topLevel)!.push(budget);
-    });
-
     // Calculate spending for selected period
     const spentAmounts = calculatePeriodSpent(
       transactions,

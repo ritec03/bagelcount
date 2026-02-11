@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
 import { useBudgetSunburstData, type SunburstNode } from '../../hooks/useBudgetSunburstData';
-import type { BudgetAllocation } from '../../lib/types';
+import type { BudgetAllocation, PeriodType } from '../../lib/types';
 import type { Transaction } from '../../lib/api/types.gen';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,7 +48,7 @@ interface BudgetSunburstProps {
   transactions: Transaction[];
   isLoading?: boolean;
   viewDate: Date;
-  periodType: 'monthly' | 'yearly' | 'quarterly';
+  periodType: PeriodType;
   normalizationMode: 'pro-rated' | 'full';
 }
 
