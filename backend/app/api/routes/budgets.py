@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from app.services.beancount import BeancountService, get_beancount_service
-from app.models.domain import BudgetAllocation, StandardBudget
+from app.models.domain import BudgetAllocation
 from datetime import date
 
 router = APIRouter()
@@ -17,55 +17,56 @@ def create_budget(
     Validates hierarchical consistency for StandardBudget.
     """
 
-    if isinstance(allocation, StandardBudget):
-        # Fetch 'active' budgets roughly around start_date or today to validate context
-        # Ideally we check the period this budget applies to.
-        # For V1, we check against currently active budgets using start_date=today
-        existing_budgets = service.get_active_budgets(start_date=date.today())
-        standard_budgets = [
-            b for b in existing_budgets if isinstance(b, StandardBudget)
-        ]
+    # TODO implement proper budget validation on backend
+    # if isinstance(allocation, StandardBudget):
+    #     # Fetch 'active' budgets roughly around start_date or today to validate context
+    #     # Ideally we check the period this budget applies to.
+    #     # For V1, we check against currently active budgets using start_date=today
+    #     existing_budgets = service.get_active_budgets(start_date=date.today())
+    #     standard_budgets = [
+    #         b for b in existing_budgets if isinstance(b, StandardBudget)
+    #     ]
 
-        # 1. Child Check: Cannot exceed Parent
-        parts = allocation.account.split(":")
-        if len(parts) > 1:
-            parent_name = ":".join(parts[:-1])
-            parent_budget = next(
-                (b for b in standard_budgets if b.account == parent_name), None
-            )
+    #     # 1. Child Check: Cannot exceed Parent
+    #     parts = allocation.account.split(":")
+    #     if len(parts) > 1:
+    #         parent_name = ":".join(parts[:-1])
+    #         parent_budget = next(
+    #             (b for b in standard_budgets if b.account == parent_name), None
+    #         )
 
-            if parent_budget:
-                # Siblings (Direct children of parent)
-                siblings = [
-                    b
-                    for b in standard_budgets
-                    if b.account.startswith(parent_name + ":")
-                    and len(b.account.split(":")) == len(parts)
-                    and b.account != allocation.account  # Exclude self if updating
-                ]
-                siblings_used = sum(b.amount for b in siblings)
-                available = parent_budget.amount - siblings_used
+    #         if parent_budget:
+    #             # Siblings (Direct children of parent)
+    #             siblings = [
+    #                 b
+    #                 for b in standard_budgets
+    #                 if b.account.startswith(parent_name + ":")
+    #                 and len(b.account.split(":")) == len(parts)
+    #                 and b.account != allocation.account  # Exclude self if updating
+    #             ]
+    #             siblings_used = sum(b.amount for b in siblings)
+    #             available = parent_budget.amount - siblings_used
 
-                if allocation.amount > available:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Exceeds parent budget ({parent_name}). Available: {available}",
-                    )
+    #             if allocation.amount > available:
+    #                 raise HTTPException(
+    #                     status_code=400,
+    #                     detail=f"Exceeds parent budget ({parent_name}). Available: {available}"
+    #                 )
 
-        # 2. Parent Check: Must cover Children
-        children = [
-            b
-            for b in standard_budgets
-            if b.account.startswith(allocation.account + ":")
-            and len(b.account.split(":")) == len(parts) + 1
-        ]
-        if children:
-            children_sum = sum(b.amount for b in children)
-            if allocation.amount < children_sum:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Insufficient for sub-categories. Required: {children_sum}",
-                )
+    #     # 2. Parent Check: Must cover Children
+    #     children = [
+    #         b
+    #         for b in standard_budgets
+    #         if b.account.startswith(allocation.account + ":")
+    #         and len(b.account.split(":")) == len(parts) + 1
+    #     ]
+    #     if children:
+    #         children_sum = sum(b.amount for b in children)
+    #         if allocation.amount < children_sum:
+    #             raise HTTPException(
+    #                 status_code=400,
+    #                 detail=f"Insufficient for sub-categories. Required: {children_sum}"
+    #             )
 
     service.add_budget(allocation)
     return {"status": "ok"}

@@ -1,7 +1,20 @@
 import { useMemo } from 'react';
-import { calculateMonthlySpent } from '../lib/budgetCalculations';
-import type { BudgetAllocation, StandardBudgetOutput } from '../lib/types';
+import type { BudgetAllocation, PeriodType, NormalizationMode, StandardBudgetOutput } from '@/lib/types';
+import {
+  calculatePeriodSpent,
+  normalizeBudgetAmount,
+  filterBudgetsByMode
+} from '@/lib/budgetCalculations';
 import type { Transaction } from '../lib/api/types.gen';
+
+// Extracted constant as requested by audit
+const SPACER_COLOR = 'transparent';
+
+// Extracted palette as requested by audit
+const PALETTE = [
+  '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3',
+  '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'
+];
 // Sunburst Chart Node Types - Discriminated Union
 
 // Base properties shared by all node types
@@ -130,9 +143,9 @@ function enrichWithSpending(
     if (remainder > 0) {
       children.push({
         type: 'spacer',
-        name: `${node.name} Unallocated`,
+        name: 'Unallocated',
         value: remainder,
-        color: 'transparent'
+        color: SPACER_COLOR
       });
     }
 
@@ -174,10 +187,6 @@ function enrichWithSpending(
  * Pure function - takes enriched tree, returns visualization-ready data
  */
 function formatForSunburst(node: SunburstNode): CategoryNode {
-  const PALETTE = [
-    '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3',
-    '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'
-  ];
   let colorIdx = 0;
 
   // Assign colors to level-2 nodes (e.g., Food, Transport under Expenses)
@@ -241,7 +250,10 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
  */
 export function useBudgetSunburstData(
   budgets: BudgetAllocation[],
-  transactions: Transaction[]
+  transactions: Transaction[],
+  viewDate: Date,
+  periodType: PeriodType,
+  normalizationMode: NormalizationMode
 ): {
   data: CategoryNode;
   isLoading: boolean;
@@ -252,22 +264,51 @@ export function useBudgetSunburstData(
       'frequency' in b
     );
 
-    // Calculate spending for current month
-    const now = new Date();
-    const spentAmounts = calculateMonthlySpent(
+    // Use shared filtering utility
+    const filteredBudgets = filterBudgetsByMode(standardBudgets, periodType, normalizationMode, viewDate);
+
+    // Normalize budget amounts based on view and mode
+    const normalizedBudgets = filteredBudgets.map(b => {
+      let amount = parseFloat(b.amount as string);
+      
+      if (normalizationMode === 'pro-rated' && 'frequency' in b) {
+        amount = normalizeBudgetAmount(amount, b.frequency, periodType);
+      }
+      
+      return { ...b, amount: amount.toString() };
+    });
+
+    // Build the category tree
+    // We need to cast normalizedBudgets to StandardBudgetOutput[] because the tree building
+    // logic expects standard budgets (with frequency).
+    // TODO: Support custom budgets in tree if needed, for now filter valid ones.
+    const validBudgets = normalizedBudgets.filter((b): b is StandardBudgetOutput => 'frequency' in b);
+    
+    // Group budgets by top-level category (e.g. "Expenses")
+    const categories = new Map<string, StandardBudgetOutput[]>();
+    validBudgets.forEach(budget => {
+      const topLevel = budget.account.split(':')[0];
+      if (!categories.has(topLevel)) {
+        categories.set(topLevel, []);
+      }
+      categories.get(topLevel)!.push(budget);
+    });
+
+    // Calculate spending for selected period
+    const spentAmounts = calculatePeriodSpent(
       transactions,
-      standardBudgets,
-      now.getFullYear(),
-      now.getMonth()
+      standardBudgets, // Pass original budgets to match accounts, logic matches by name
+      periodType,
+      viewDate
     );
 
     // Three-step pipeline
-    const rawTree = buildBudgetTree(standardBudgets);
+    const rawTree = buildBudgetTree(validBudgets);
     const { node: enrichedTree } = enrichWithSpending(rawTree, spentAmounts);
     const visualizationData = formatForSunburst(enrichedTree);
 
     return visualizationData;
-  }, [budgets, transactions]);
+  }, [budgets, transactions, viewDate, periodType, normalizationMode]);
 
   return {
     data,

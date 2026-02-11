@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTransactions } from './useTransactions';
-import { calculateMonthlySpent } from '../lib/budgetCalculations';
-import type { BudgetAllocation } from '../lib/types';
+import { calculatePeriodSpent } from '../lib/budgetCalculations';
+import type { BudgetAllocation, PeriodType } from '../lib/types';
 
 /**
  * Custom hook that calculates spent amounts for budget accounts in the current month.
@@ -26,14 +26,14 @@ import type { BudgetAllocation } from '../lib/types';
  * }
  * ```
  */
-export function useBudgetSpentAmounts(budgets: BudgetAllocation[]): Map<string, number> {
+export function useBudgetSpentAmounts(
+  budgets: BudgetAllocation[],
+  viewDate: Date,
+  periodType: PeriodType
+): Map<string, number> {
   const { transactions } = useTransactions();
 
   return useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth(); // 0-indexed
-
-    return calculateMonthlySpent(transactions, budgets, currentYear, currentMonth);
-  }, [transactions, budgets]);
+    return calculatePeriodSpent(transactions, budgets, periodType, viewDate);
+  }, [transactions, budgets, viewDate, periodType]);
 }
