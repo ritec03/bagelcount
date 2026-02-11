@@ -82,6 +82,7 @@ option "operating_currency" "CAD"
   frequency: "monthly"
 """
 
+
 @pytest.fixture
 def test_client_with_sample(tmp_path):
     """
@@ -102,20 +103,21 @@ def test_client_with_sample(tmp_path):
     
     # 3. Override Dependency
     app.dependency_overrides[get_beancount_service] = lambda: service
-    
+
     client = TestClient(app)
     yield client, (temp_ledger, temp_budget)
     
     # 4. Cleanup
     app.dependency_overrides = {}
 
+
 def test_scenario_accounts(test_client_with_sample):
     """Verify we can retrieve the active accounts from the sample."""
     client, _ = test_client_with_sample
-    
+
     response = client.get("/api/v1/accounts/")
     assert response.status_code == 200
-    
+
     accounts = response.json()
     # In sample_ledger:
     # Assets:Checking, Assets:Cash, Expenses:Food, Expenses:Rent, Expenses:Utilities, Income:Salary, Equity:Opening-Balances
@@ -127,27 +129,28 @@ def test_scenario_accounts(test_client_with_sample):
     assert "Assets:Checking" in names
     assert "Expenses:Rent" in names
     assert "Income:Salary" in names
-    
+
     # Edge Case: Closed Accounts
     # Assets:OldBank was closed in 2023, so it should NOT be in the active list
     assert "Assets:OldBank" not in names
 
+
 def test_scenario_transactions(test_client_with_sample):
     """Verify we can retrieve transactions and details are correct."""
     client, _ = test_client_with_sample
-    
+
     response = client.get("/api/v1/transactions/")
     assert response.status_code == 200
-    
+
     txns = response.json()
-    
+
     # Sample file has:
     # 1 Opening Balance
     # 6 Transactions in Jan 2024 (Employer, Landlord, Kroger x2, Comcast, Trader Joes)
     # 2 Transactions in edge cases (Future Cafe, Walmart split)
     # Total = 1 + 6 + 2 = 9 transactions
     assert len(txns) == 9
-    
+
     # Edge Case: Future Transactions
     # Verify the Feb 1st transaction is included (Note: Sample uses 2026)
     future_txn = next((t for t in txns if t["payee"] == "Future Cafe"), None)
@@ -160,16 +163,17 @@ def test_scenario_transactions(test_client_with_sample):
     assert walmart_txn["narration"] == "Supplies and Food"
     # Verify it has exactly 3 splits (as requested by user)
     assert len(walmart_txn["postings"]) == 3
-    
+
     # Verify postings content & amounts explicitly
     postings = walmart_txn["postings"]
     food = next(p for p in postings if p["account"] == "Expenses:Food")
     utilities = next(p for p in postings if p["account"] == "Expenses:Utilities")
     checking = next(p for p in postings if p["account"] == "Assets:Checking")
-    
+
     assert food["units"] == "50.00"
     assert utilities["units"] == "20.00"
     assert checking["units"] == "-70.00"
+
 
 def test_scenario_write_budget(test_client_with_sample):
     """Verify we can write a new budget and it persists."""
@@ -181,9 +185,9 @@ def test_scenario_write_budget(test_client_with_sample):
         "amount": "120.00",
         "currency": "USD",
         "start_date": "2024-02-01",
-        "frequency": "monthly"
+        "frequency": "monthly",
     }
-    
+
     # 1. Write
     response = client.post("/api/v1/budgets/", json=payload)
     assert response.status_code == 200

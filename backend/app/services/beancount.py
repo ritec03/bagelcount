@@ -22,7 +22,7 @@ class BeancountService:
 
     def load(self) -> None:
         """Loads and parses the beancount file."""
-        # If loader is load_string, filepath plays a different role or is ignored, 
+        # If loader is load_string, filepath plays a different role or is ignored,
         # but standard beancount usage is load_file(path) or load_string(content)
         # We will adapt based on the callable signature if needed, but for now assume compatible
         self._entries, self._errors, self._options = self.loader_func(self.filepath)
@@ -31,7 +31,7 @@ class BeancountService:
     @property
     def entries(self) -> list[Any]:
         if not self._loaded:
-             self.load()
+            self.load()
         return self._entries
 
     def get_transactions(self, start_date: date | None = None, end_date: date | None = None) -> list[DomainTransaction]:
@@ -68,28 +68,28 @@ class BeancountService:
         An account is active if it has an Open directive and no Close directive (or closed later).
         For simplicity in this V1, we just check if it's ever opened and not currently closed.
         """
-        open_accounts = {} # name -> Open directive
+        open_accounts = {}  # name -> Open directive
         closed_accounts = set()
-        
+
         for entry in self.entries:
             if isinstance(entry, Open):
                 open_accounts[entry.account] = entry
             elif isinstance(entry, Close):
                 closed_accounts.add(entry.account)
-        
+
         accounts = []
         for name, open_directive in open_accounts.items():
             if name not in closed_accounts:
                 # Simple extraction of type (Assets, Expenses, etc)
                 account_type = name.split(":")[0]
                 # Default currency from the open directive if available, else USD
-                currency = open_directive.currencies[0] if open_directive.currencies else "USD"
-                
-                accounts.append(Account(
-                    name=name,
-                    type=account_type,
-                    currency=currency
-                ))
+                currency = (
+                    open_directive.currencies[0] if open_directive.currencies else "USD"
+                )
+
+                accounts.append(
+                    Account(name=name, type=account_type, currency=currency)
+                )
         return accounts
 
     def add_budget(self, allocation: BudgetAllocation) -> None:
@@ -104,13 +104,13 @@ class BeancountService:
         # Ensure created_at is set
         if allocation.created_at is None:
             allocation.created_at = int(time.time())
-            
+
         # Base metadata
         meta = {
             "start_date": allocation.start_date.isoformat(),
-            "created_at": str(allocation.created_at)
+            "created_at": str(allocation.created_at),
         }
-        
+
         # Type-specific metadata
         if isinstance(allocation, StandardBudget):
             meta["frequency"] = allocation.frequency
@@ -154,16 +154,17 @@ class BeancountService:
         
         self._loaded = False
 
-
-    def get_active_budgets(self, start_date: date | None = None, end_date: date | None = None) -> list[BudgetAllocation]:
+    def get_active_budgets(
+        self, start_date: date | None = None, end_date: date | None = None
+    ) -> list[BudgetAllocation]:
         """
-        Parses all 'custom "budget"' directives and returns the active resolved budgets 
+        Parses all 'custom "budget"' directives and returns the active resolved budgets
         that overlap with the given date range.
         If dates are None, returns all currently active budgets (assuming today).
         """
-        active_candidates = {} # Key -> List[BudgetAllocation]
+        active_candidates = {}  # Key -> List[BudgetAllocation]
         from beancount.core.data import Custom
-        
+
         for entry in self.entries:
             if not (isinstance(entry, Custom) and entry.type == "budget"):
                 continue
@@ -178,11 +179,11 @@ class BeancountService:
                 amount_obj = entry.values[1].value
                 amount = amount_obj.number
                 currency = amount_obj.currency
-                
+
                 tags = [t.strip() for t in meta.get("tags", "").split(",") if t.strip()]
                 b_start = date.fromisoformat(meta["start_date"])
                 b_created = int(meta.get("created_at", 0))
-                
+
                 if "frequency" in meta:
                     budget_obj = StandardBudget(
                         account=account,
@@ -191,7 +192,7 @@ class BeancountService:
                         tags=tags,
                         created_at=b_created,
                         start_date=b_start,
-                        frequency=meta["frequency"]
+                        frequency=meta["frequency"],
                     )
                     key = (account, b_start, meta["frequency"], tuple(sorted(tags)))
                 elif "end_date" in meta:
@@ -203,7 +204,7 @@ class BeancountService:
                         tags=tags,
                         created_at=b_created,
                         start_date=b_start,
-                        end_date=b_end
+                        end_date=b_end,
                     )
                     key = (account, b_start, b_end, tuple(sorted(tags)))
                 else:
@@ -212,15 +213,17 @@ class BeancountService:
                 if key not in active_candidates:
                     active_candidates[key] = []
                 active_candidates[key].append(budget_obj)
-                
+
             except (KeyError, ValueError, IndexError, AttributeError):
                 continue
-        
+
         resolved_budgets = []
         for candidates in active_candidates.values():
-            winner = sorted(candidates, key=lambda x: x.created_at or 0, reverse=True)[0]
+            winner = sorted(candidates, key=lambda x: x.created_at or 0, reverse=True)[
+                0
+            ]
             resolved_budgets.append(winner)
-            
+
         return resolved_budgets
 
     def check_budget_include(self) -> bool:

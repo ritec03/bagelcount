@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     beancount_file: str = "main.beancount"  # Default, can be overridden by env var
     budget_file: str = "budgets.beancount"  # File for writing new budgets
@@ -9,5 +10,6 @@ class Settings(BaseSettings):
         env_ignore_empty=True,
         extra="ignore",
     )
+
 
 settings = Settings()

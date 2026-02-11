@@ -156,7 +156,7 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
 }
 
 export {
-  useFormField,
+  // useFormField, // only export component for fast refresh
   Form,
   FormItem,
   FormLabel,
