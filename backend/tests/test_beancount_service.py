@@ -1,6 +1,8 @@
-import pytest
 from beancount import loader
 from app.services.beancount import BeancountService
+from app.models.domain import StandardBudget
+from decimal import Decimal
+from datetime import date
 
 def test_load_valid_string():
     """Verify we can load transactions from an in-memory string."""
@@ -88,10 +90,6 @@ def test_get_transactions_returns_pydantic():
     assert p1.account == "Expenses:Food"
     assert str(p1.units) == "10.00"
     assert p1.currency == "USD"
-
-from app.models.domain import StandardBudget
-from decimal import Decimal
-from datetime import date
 
 def test_add_budget_appends_to_file(tmp_path):
     """Verify add_budget appends a correctly formatted directive to the file."""

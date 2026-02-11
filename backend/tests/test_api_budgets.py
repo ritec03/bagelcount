@@ -1,8 +1,6 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.services.beancount import BeancountService, get_beancount_service
-from app.models.domain import BudgetAllocation
-from beancount import loader
 from unittest.mock import MagicMock
 
 client = TestClient(app)
