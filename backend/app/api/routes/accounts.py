@@ -5,10 +5,9 @@ from app.models.domain import Account
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[Account])
-def get_accounts(
-    service: BeancountService = Depends(get_beancount_service)
-):
+def get_accounts(service: BeancountService = Depends(get_beancount_service)):
     """
     Returns a list of all active accounts.
     """
