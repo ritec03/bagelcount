@@ -61,4 +61,5 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+// export { Button, buttonVariants }
+export { Button } // only export component for fast refresh
