@@ -1,0 +1,78 @@
+
+option "title" "BagelCount Sample Ledger"
+option "operating_currency" "USD"
+
+include "budgets.beancount"
+
+; --- Accounts ---
+2020-01-01 open Assets:Checking        USD
+2020-01-01 open Assets:Savings         USD
+2020-01-01 open Liabilities:CreditCard USD
+2020-01-01 open Income:Salary          USD
+2020-01-01 open Expenses:Food          USD
+2020-01-01 open Expenses:Food:Groceries USD
+2020-01-01 open Expenses:Food:Dining   USD
+2020-01-01 open Expenses:Food:Coffee   USD
+2020-01-01 open Expenses:Housing:Rent  USD
+2020-01-01 open Expenses:Travel        USD
+2020-01-01 open Expenses:Utilities     USD
+2020-01-01 open Equity:Opening-Balances USD
+
+; --- Opening Balances ---
+2023-12-31 * "Opening Balance"
+  Assets:Checking           5000.00 USD
+  Assets:Savings           10000.00 USD
+  Liabilities:CreditCard    -500.00 USD
+  Equity:Opening-Balances
+
+; --- January 2024 Transactions ---
+
+2024-01-01 * "Landlord" "Rent January"
+  Expenses:Housing:Rent     1500.00 USD
+  Assets:Checking
+
+2024-01-05 * "Employer" "Salary"
+  Assets:Checking           3000.00 USD
+  Income:Salary
+
+2024-01-06 * "Safeway" "Weekly Groceries"
+  Expenses:Food:Groceries    150.00 USD
+  Liabilities:CreditCard
+
+2024-01-08 * "Starbucks" "Coffee run"
+  Expenses:Food:Coffee         6.50 USD
+  Liabilities:CreditCard
+
+2024-01-10 * "Uber Eats" "Lazy Dinner"
+  Expenses:Food:Dining        45.00 USD
+  Liabilities:CreditCard
+
+2024-01-15 * "Safeway" "More Groceries"
+  Expenses:Food:Groceries    120.00 USD
+  Liabilities:CreditCard
+
+2024-01-18 * "Unknown Cafe" "Coffee with friend"
+  Expenses:Food:Coffee        12.00 USD
+  Assets:Checking
+
+2024-01-20 * "Employer" "Salary"
+  Assets:Checking           3000.00 USD
+  Income:Salary
+
+2024-01-25 * "Delta" "Flight Booking"
+  Expenses:Travel            450.00 USD
+  Liabilities:CreditCard
+
+2024-01-31 * "Credit Card Payment"
+  Liabilities:CreditCard     500.00 USD
+  Assets:Checking
+
+; --- February 2024 Transactions (Partial) ---
+
+2024-02-01 * "Landlord" "Rent February"
+  Expenses:Housing:Rent     1500.00 USD
+  Assets:Checking
+
+2024-02-02 * "Local Roaster" "Beans"
+  Expenses:Food:Coffee        25.00 USD
+  Assets:Checking

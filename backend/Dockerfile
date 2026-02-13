@@ -1,23 +1,27 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim
+# --- Build stage ---
+FROM python:3.12.9-slim AS builder
 
-# Set the working directory in the container
+COPY --from=ghcr.io/astral-sh/uv:0.7.13 /uv /usr/local/bin/uv
+
 WORKDIR /app
 
-# Install uv for dependency management
-RUN pip install uv
-
-# Copy the project files needed for installation
 COPY pyproject.toml uv.lock ./
-
-# Install dependencies using uv
 RUN uv sync --frozen --no-install-project
 
-# Copy the rest of the application code
 COPY . .
 
-# Expose the port the app runs on
+# --- Runtime stage ---
+FROM python:3.12.9-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.7.13 /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+COPY --from=builder /app /app
+
+RUN groupadd -r app && useradd -r -g app app
+USER app
+
 EXPOSE 8000
 
-# Command to run the application
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -73,3 +73,8 @@ export default defineConfig([
   },
 ])
 ```
+
+
+# TO RUN THE APP
+run `uv run uvicorn app.main:app --reload` to start backend
+run `npm run dev` to start frontend

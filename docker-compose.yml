@@ -3,17 +3,36 @@ services:
     build:
       context: ./backend
     environment:
-      - BEANCOUNT_FILE=/data/${BEANCOUNT_FILE_NAME:-main.beancount}
+      - BEANCOUNT_FILE=/data/${BEANCOUNT_FILE_NAME:?Set BEANCOUNT_FILE_NAME in .env or environment}
       - BUDGET_FILE=/data/budgets.beancount
     volumes:
-      - ${BEANCOUNT_DIR}:/data
+      - ${BEANCOUNT_DIR:?Set BEANCOUNT_DIR in .env or environment}:/data
     ports:
       - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   frontend:
     build:
       context: .
     ports:
-      - "3000:80"
+      - "3000:8080"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

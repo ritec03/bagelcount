@@ -9,3 +9,8 @@ dist/
 .ruff_cache
 .vscode
 .env
+.env.*
+__pycache__/
+docker-compose.yml
+Dockerfile
+*.md
