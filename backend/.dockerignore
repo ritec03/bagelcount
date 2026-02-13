@@ -1,0 +1,9 @@
+.pytest_cache
+.ruff_cache
+.venv
+.gitignore
+.env
+__pycache__/
+Dockerfile
+*.beancount
+*.md
