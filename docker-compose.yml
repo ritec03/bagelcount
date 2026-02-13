@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - BEANCOUNT_FILE=/data/${BEANCOUNT_FILE_NAME:-main.beancount}
+      - BUDGET_FILE=/data/budgets.beancount
+    volumes:
+      - ${BEANCOUNT_DIR}:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

@@ -1,0 +1,11 @@
+backend/
+node_modules/
+.git/
+.venv/
+dist/
+.DS_Store
+.github
+.pytest_cache
+.ruff_cache
+.vscode
+.env
