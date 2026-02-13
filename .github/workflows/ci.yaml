@@ -91,3 +91,9 @@ jobs:
       
       - name: Build Production Bundle
         run: npm run build
+
+      - name: Build Docker Images
+        run: docker compose build
+        env:
+          BEANCOUNT_DIR: /tmp
+          BEANCOUNT_FILE_NAME: test.beancount

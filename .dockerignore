@@ -1,4 +1,5 @@
 backend/
+!backend/openapi.json
 node_modules/
 .git/
 .venv/
