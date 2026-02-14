@@ -13,60 +13,31 @@
 
 ### ✨ Features at a Glance
 
-<table>
-<tr>
-<td width="50%">
-
-**📊 Budget Dashboard**
+#### 📊 Budget Dashboard
 Interactive sunburst chart showing budget distribution, and a list of budgets with progress bars.
-
-</td>
-<td width="50%">
-
-**➕ Create Budgets**
-Set up recurring (monthly/yearly) or one-off budgets with account search, amount, frequency, and tags.
-
-</td>
-</tr>
-<tr>
-<td>
 
 <img src="app-screenshots/dashboard-clear.png" alt="Budget Dashboard" width="100%" />
 
-</td>
-<td>
+---
+
+#### ➕ Create Budgets
+Set up recurring (monthly/yearly) or one-off budgets with account search, amount, frequency, and tags.
 
 <img src="app-screenshots/create-budget.png" alt="Create Budget Form" width="100%" />
 
-</td>
-</tr>
-<tr>
-<td width="50%">
+---
 
-**⚠️ Smart Validation**
+#### ⚠️ Smart Validation
 Hierarchical budget validation catches conflicts. See which budgets conflict with which and by what amount.
-
-</td>
-<td width="50%">
-
-**📅 Period Controls**
-Switch between monthly, and yearly views with pro-rated or full amount display modes.
-
-</td>
-</tr>
-<tr>
-<td>
 
 <img src="app-screenshots/budget-dashboard-warnings.png" alt="Budget Validation Warnings" width="100%" />
 
-</td>
-<td>
+---
+
+#### 📅 Period Controls
+Switch between monthly, and yearly views with pro-rated or full amount display modes.
 
 <img src="app-screenshots/budget-period.png" alt="Period Controls" width="100%" />
-
-</td>
-</tr>
-</table>
 
 ## How Budgets Are Stored
 
