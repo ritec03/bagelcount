@@ -12,6 +12,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+      - /home/app/.cache
+      - /home/app/.local
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

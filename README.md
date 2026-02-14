@@ -1,6 +1,72 @@
-# BagelCount
+<div align="center">
 
-A budgeting UI for [Beancount](https://beancount.github.io/) — allocate income, track spending against envelopes, and visualize your budget, all backed by plain-text accounting.
+<br/>
+
+**Track spending · Visualize your budget — all backed by plain-text accounting.**
+
+[![License: GPL v2](https://img.shields.io/badge/backend-GPL%20v2-blue.svg)](backend/LICENSE)
+[![License: MIT](https://img.shields.io/badge/frontend-MIT-green.svg)](LICENSE-FRONTEND)
+
+</div>
+
+---
+
+### ✨ Features at a Glance
+
+<table>
+<tr>
+<td width="50%">
+
+**📊 Budget Dashboard**
+Interactive sunburst chart showing budget distribution, and a list of budgets with progress bars.
+
+</td>
+<td width="50%">
+
+**➕ Create Budgets**
+Set up recurring (monthly/yearly) or one-off budgets with account search, amount, frequency, and tags.
+
+</td>
+</tr>
+<tr>
+<td>
+
+<img src="app-screenshots/dashboard-clear.png" alt="Budget Dashboard" width="100%" />
+
+</td>
+<td>
+
+<img src="app-screenshots/create-budget.png" alt="Create Budget Form" width="100%" />
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**⚠️ Smart Validation**
+Hierarchical budget validation catches conflicts. See which budgets conflict with which and by what amount.
+
+</td>
+<td width="50%">
+
+**📅 Period Controls**
+Switch between monthly, and yearly views with pro-rated or full amount display modes.
+
+</td>
+</tr>
+<tr>
+<td>
+
+<img src="app-screenshots/budget-dashboard-warnings.png" alt="Budget Validation Warnings" width="100%" />
+
+</td>
+<td>
+
+<img src="app-screenshots/budget-period.png" alt="Period Controls" width="100%" />
+
+</td>
+</tr>
+</table>
 
 ## How Budgets Are Stored
 
