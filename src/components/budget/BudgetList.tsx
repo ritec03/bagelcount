@@ -12,6 +12,34 @@ import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 
+// The "Beancount Safe" Approach
+function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: string, endDate: string} {
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    // Helper to force YYYY-MM-DD string creation from local numbers
+    const toBeancountString = (y: number, m: number, d: number) => {
+        return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    };
+
+    if (periodType === 'monthly') {
+        // Last day of month trick: Day 0 of next month
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        
+        return { 
+            startDate: toBeancountString(year, month, 1), 
+            endDate: toBeancountString(year, month, lastDay) 
+        };
+    } else if (periodType === 'quarterly') {
+        throw Error("Not Implemented")
+    } else {
+        return { 
+            startDate: toBeancountString(year, 0, 1), 
+            endDate: toBeancountString(year, 11, 31) 
+        };
+    }
+}
+
 interface BudgetListProps {
     budgets: BudgetAllocation[];
     isLoading: boolean;
@@ -144,7 +172,10 @@ export function BudgetList({
                                 <BudgetCard
                                     budget={budget}
                                     spentAmount={spentAmounts.get(budget.account) || 0}
-                                    onClick={() => navigate(`/transactions/${budget.account}`)}
+                                    onClick={() => {
+                                        const { startDate, endDate } = getPeriodDates(viewDate, periodType);
+                                        navigate(`/transactions/${budget.account}?startDate=${startDate}&endDate=${endDate}`);
+                                    }}
                                     onEdit={() => openEdit(budget)}
                                     periodType={periodType}
                                     normalizationMode={normalizationMode}

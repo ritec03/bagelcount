@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowLeft, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -34,8 +34,9 @@ export function TransactionsPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
 
-    const [startDate, setStartDate] = useState("")
-    const [endDate, setEndDate] = useState("")
+    const [searchParams] = useSearchParams();
+    const [startDate, setStartDate] = useState(searchParams.get("startDate") || "")
+    const [endDate, setEndDate] = useState(searchParams.get("endDate") || "")
 
     useEffect(() => {
         if (!accountId) return;
