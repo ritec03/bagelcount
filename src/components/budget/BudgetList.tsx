@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,6 +66,7 @@ export function BudgetList({
 }: BudgetListProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
+    const navigate = useNavigate();
 
     // Use custom hook for logic
     const { 
@@ -142,7 +144,8 @@ export function BudgetList({
                                 <BudgetCard
                                     budget={budget}
                                     spentAmount={spentAmounts.get(budget.account) || 0}
-                                    onClick={() => openEdit(budget)}
+                                    onClick={() => navigate(`/transactions/${budget.account}`)}
+                                    onEdit={() => openEdit(budget)}
                                     periodType={periodType}
                                     normalizationMode={normalizationMode}
                                     validationError={validationError}
