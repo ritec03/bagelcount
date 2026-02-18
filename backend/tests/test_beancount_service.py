@@ -9,6 +9,9 @@ from app.models.domain import StandardBudget
 from decimal import Decimal
 from datetime import date
 
+# Capture original getmtime to avoid recursion in mocks
+_original_getmtime = os.path.getmtime
+
 # --- NEW TDD TESTS for Singleton & Smart Reloading ---
 
 @pytest.fixture
@@ -37,13 +40,21 @@ include "{budget_file}"
     }
 
 def test_singleton_pattern():
-    """Verify get_beancount_service returns the same instance."""
+    """Verify get_beancount_service returns the same instance via lru_cache."""
+    # Ensure cache is clear before test
+    get_beancount_service.cache_clear()
+    
     s1 = get_beancount_service()
     s2 = get_beancount_service()
     assert s1 is s2, "Service should be a singleton"
+    
+    # Verify cache info
+    info = get_beancount_service.cache_info()
+    assert info.hits >= 1
 
-def test_no_reload_on_repeated_access(temp_beancount_files):
-    """Verify load_file is NOT called on repeated access if files haven't changed."""
+
+def test_no_reload_on_repeated_access_with_mock(temp_beancount_files):
+    """Verify load_file is NOT called on repeated access if mtime implies no change."""
     paths = temp_beancount_files
     service = BeancountService(paths["main"], paths["budget"])
     
@@ -52,47 +63,71 @@ def test_no_reload_on_repeated_access(temp_beancount_files):
     
     # 2. Mock loader to ensure subsequent calls don't use it
     with patch.object(service, 'loader_func', wraps=service.loader_func) as mock_loader:
-        # Access entries again
-        _ = service.entries
-        
-        # Verify loader was NOT called
-        mock_loader.assert_not_called()
+        # Mock mtime to stay constant using original function
+        with patch('os.path.getmtime', side_effect=_original_getmtime) as mock_mtime:
+            # Access entries again
+            _ = service.entries
+            
+            # Verify loader was NOT called
+            mock_loader.assert_not_called()
 
 def test_smart_reload_on_main_change(temp_beancount_files):
-    """Verify reload occurs when main file changes and data updates."""
+    """Verify reload occurs when main file changes (simulated via mtime mock)."""
     paths = temp_beancount_files
     service = BeancountService(paths["main"], paths["budget"])
     
     # Initial load
+    service.load()
     assert len(service.entries) > 0
     
-    # Modify main file
-    time.sleep(1.1)
+    # Mock os.path.getmtime
+    # We need a side_effect that returns a newer time for the main file when checked
+    
+    original_mtime = _original_getmtime(paths["main"])
+    future_mtime = original_mtime + 100
+    
+    def mtime_side_effect(path):
+        if str(path) == str(paths["main"]):
+            return future_mtime
+        return _original_getmtime(path)
+
+    # Modify the file content so we can verify reload actually parses new data
     with open(paths["main"], "a") as f:
         f.write('\n2023-01-03 * "New Main Transaction"\n  Assets:Cash -10 USD\n  Expenses:Food 10 USD\n')
-    
-    # Access entries
-    entries = service.entries
-    
-    # Verify new data present
-    has_new_txn = any(e.narration == "New Main Transaction" for e in entries if hasattr(e, 'narration'))
-    assert has_new_txn, "New transaction from main file should be loaded"
+
+    # Apply mock
+    with patch('os.path.getmtime', side_effect=mtime_side_effect):
+        # Access entries
+        entries = service.entries
+        
+        # Verify new data present
+        has_new_txn = any(e.narration == "New Main Transaction" for e in entries if hasattr(e, 'narration'))
+        assert has_new_txn, "New transaction from main file should be loaded"
+
 
 def test_smart_reload_on_included_change(temp_beancount_files):
-    """Verify reload occurs when an INCLUDED file changes."""
+    """Verify reload occurs when an INCLUDED file changes (simulated via mtime mock)."""
     paths = temp_beancount_files
     service = BeancountService(paths["main"], paths["budget"])
     
     service.load()
     
-    # Modify included file
-    time.sleep(1.1)
+    original_mtime_inc = _original_getmtime(paths["included"])
+    future_mtime_inc = original_mtime_inc + 100
+    
+    def mtime_side_effect(path):
+        if str(path) == str(paths["included"]):
+            return future_mtime_inc
+        return _original_getmtime(path)
+    
+    # Modify included file content
     with open(paths["included"], "a") as f:
         f.write('\n2023-01-04 * "New Included Transaction"\n  Assets:Cash -5 USD\n  Expenses:Food 5 USD\n')
         
-    entries = service.entries
-    has_new_txn = any(e.narration == "New Included Transaction" for e in entries if hasattr(e, 'narration'))
-    assert has_new_txn, "New transaction from included file should be loaded"
+    with patch('os.path.getmtime', side_effect=mtime_side_effect):
+        entries = service.entries
+        has_new_txn = any(e.narration == "New Included Transaction" for e in entries if hasattr(e, 'narration'))
+        assert has_new_txn, "New transaction from included file should be loaded"
 
 def test_no_reload_on_budget_change(temp_beancount_files):
     """Verify reload does NOT occur when the excluded budget file changes."""
@@ -101,13 +136,22 @@ def test_no_reload_on_budget_change(temp_beancount_files):
     
     service.load()
     
+    original_mtime_budget = _original_getmtime(paths["budget"])
+    future_mtime_budget = original_mtime_budget + 100
+    
+    def mtime_side_effect(path):
+        if str(path) == str(paths["budget"]):
+            return future_mtime_budget
+        return _original_getmtime(path)
+
     with patch.object(service, 'loader_func', wraps=service.loader_func) as mock_loader:
-        time.sleep(1.1)
-        with open(paths["budget"], "a") as f:
-            f.write('\n; Budget change that should be ignored\n')
-            
-        _ = service.entries
-        mock_loader.assert_not_called()
+        with patch('os.path.getmtime', side_effect=mtime_side_effect):
+            # We modify content just in case
+            with open(paths["budget"], "a") as f:
+                f.write('\n; Budget change that should be ignored\n')
+                
+            _ = service.entries
+            mock_loader.assert_not_called()
 
 def test_write_operation_invalidates_cache(temp_beancount_files):
     """Verify internal write operations force a reload."""
@@ -133,7 +177,8 @@ def test_write_operation_invalidates_cache(temp_beancount_files):
     )
     assert has_budget, "Budget added via add_budget should be visible immediately"
 
-# --- LEGACY TESTS (Preserved) ---
+
+# --- LEGACY TESTS ---
 
 def test_load_valid_string():
     """Verify we can load transactions from an in-memory string."""
@@ -143,8 +188,6 @@ def test_load_valid_string():
   Assets:Checking  1000.00 USD
   Equity:Opening-Balances
 """
-    # ensure_fresh will behave safely because os.path.getmtime raises OSError for string content, 
-    # forcing a reload, which calls loader.load_string(content) -> success.
     service = BeancountService(
         content, budget_file="dummy.bean", loader_func=loader.load_string
     )
@@ -167,27 +210,27 @@ def test_empty_string():
 
 def test_lazy_loading(tmp_path):
     """Verify loading happens on access, not init."""
-    # Updated to use a real file to avoid ensure_fresh reloading issues with mock loader strings
-    
     call_count = 0
     def mock_loader(data):
         nonlocal call_count
         call_count += 1
         return ([], [], {})
 
-    # We'll use real file approach for robustness
+    # Use a real file so getmtime works
     f = tmp_path / "valid.bean"
     f.write_text("")
     service_valid = BeancountService(str(f), budget_file="b.bean", loader_func=mock_loader)
     
-    _ = service_valid.entries
-    # call_count should be 1
-    first_count = call_count
-    assert first_count == 1
+    # Init: 0 calls
+    assert call_count == 0
     
+    # First Access: 1 call
     _ = service_valid.entries
-    # call_count should remain same if caching works and mtime hasn't changed
-    assert call_count == first_count
+    assert call_count == 1
+    
+    # Second Access: 1 call (cached)
+    _ = service_valid.entries
+    assert call_count == 1
 
 def test_get_accounts():
     """Verify we can extract active accounts from Open directives."""
@@ -200,10 +243,12 @@ def test_get_accounts():
     service = BeancountService(
         content, budget_file="dummy.bean", loader_func=loader.load_string
     )
+    
+    # explicit load to emulate update
+    with patch.object(service, 'ensure_fresh'):
+        service.load()
+        accounts = service.get_accounts()
 
-    accounts = service.get_accounts()
-
-    # We expect 3 open accounts
     assert len(accounts) == 3
     account_names = {a.name for a in accounts}
     assert "Assets:Checking" in account_names

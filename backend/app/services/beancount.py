@@ -18,6 +18,10 @@ from beancount.parser import printer
 import os
 import time
 from decimal import Decimal
+from functools import lru_cache
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BeancountService:
@@ -61,8 +65,9 @@ class BeancountService:
         for path in watched:
             try:
                 self._last_mtimes[path] = os.path.getmtime(path)
-            except OSError:
+            except OSError as e:
                 # File might have been deleted or inaccessible
+                logger.warning(f"Could not get mtime for watched file {path}: {e}")
                 pass
 
     def ensure_fresh(self):
@@ -103,7 +108,7 @@ class BeancountService:
         end_date: date | None = None,
         account_name: str | None = None,
     ) -> list[DomainTransaction]:
-        self.ensure_fresh()
+        # ensure_fresh is called via self.entries property access
         txns = []
         for entry in self.entries:
             if isinstance(entry, Transaction):
@@ -156,7 +161,7 @@ class BeancountService:
         An account is active if it has an Open directive and no Close directive (or closed later).
         For simplicity in this V1, we just check if it's ever opened and not currently closed.
         """
-        self.ensure_fresh()
+        # ensure_fresh is called via self.entries property access
         open_accounts = {}  # name -> Open directive
         closed_accounts = set()
 
@@ -242,7 +247,7 @@ class BeancountService:
         that overlap with the given date range.
         If dates are None, returns all currently active budgets (assuming today).
         """
-        self.ensure_fresh()
+        # ensure_fresh is called via self.entries property access
         active_candidates = {}  # Key -> List[BudgetAllocation]
         from beancount.core.data import Custom
 
@@ -334,11 +339,7 @@ class BeancountService:
             return False
 
 
-# Global singleton instance
-_beancount_service_instance: BeancountService | None = None
-
+# Dependency for FastAPI
+@lru_cache(maxsize=1)
 def get_beancount_service():
-    global _beancount_service_instance
-    if _beancount_service_instance is None:
-        _beancount_service_instance = BeancountService(settings.beancount_file, settings.budget_file)
-    return _beancount_service_instance
+    return BeancountService(settings.beancount_file, settings.budget_file)
