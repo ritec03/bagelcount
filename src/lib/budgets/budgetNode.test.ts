@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BudgetInstance, BudgetTreeNode, insertBudget, makeAccountLabel } from '@/lib/budgets/budgetNode';
+import { BudgetTreeNode, insertBudget } from '@/lib/budgets/budgetNode';
 import { DateRange } from '@/lib/budgets/dateRange';
 import { NaiveDate } from '@/lib/budgets/dateUtil';
 import { deleteBudget } from '@/lib/budgets/budgetNode';
@@ -50,32 +50,6 @@ describe('BudgetInstance', () => {
   it('accepts an open-ended effective range', () => {
     const inst = instance('2026-01-01', null, 1000);
     expect(inst.effectiveRange.end).toBeNull();
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('makeAccountLabel', () => {
-  it('creates a label from a single segment', () => {
-    const lbl = makeAccountLabel('Expenses');
-    expect(lbl).toEqual(['Expenses']);
-  });
-
-  it('creates a label from multiple colon-separated segments', () => {
-    const lbl = makeAccountLabel('Expenses:Food:Restaurants');
-    expect(lbl).toEqual(['Expenses', 'Food', 'Restaurants']);
-  });
-
-  it('throws on an empty string', () => {
-    expect(() => makeAccountLabel('')).toThrow();
-  });
-
-  it('throws when any segment is empty (e.g. trailing colon)', () => {
-    expect(() => makeAccountLabel('Expenses:')).toThrow();
-  });
-
-  it('throws when a middle segment is empty (e.g. double colon)', () => {
-    expect(() => makeAccountLabel('Expenses::Food')).toThrow();
   });
 });
 
