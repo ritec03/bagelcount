@@ -49,7 +49,7 @@ export function TransactionsPage() {
                 // but here accountId is likely the account name passed in URL
                 const decodedAccount = decodeURIComponent(accountId);
                 
-                const transactions = await fetchTransactions(decodedAccount);
+                const transactions = await fetchTransactions(decodedAccount, startDate, endDate);
                 
                 // Transform to Row type
                 const rows: TransactionRow[] = transactions.map(t => {
@@ -74,7 +74,7 @@ export function TransactionsPage() {
         };
 
         loadData();
-    }, [accountId]); // We can add startDate/endDate here if we switch to server-side filtering later
+    }, [accountId, startDate, endDate]);
 
     const filteredData = useMemo(() => {
         let result = data;
@@ -88,16 +88,11 @@ export function TransactionsPage() {
             );
         }
 
-        // Date range filter (Client Side for now)
-        if (startDate) {
-            result = result.filter(row => row.date >= startDate);
-        }
-        if (endDate) {
-            result = result.filter(row => row.date <= endDate);
-        }
+        // Date range filtering is handled server-side
+        // We still trigger re-fetch when dates change via useEffect dependency
 
         return result;
-    }, [data, searchTerm, startDate, endDate]);
+    }, [data, searchTerm]);
 
     if (!accountId) return <div>Invalid Account</div>
 
