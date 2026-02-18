@@ -44,7 +44,7 @@ class BeancountService:
         # We will adapt based on the callable signature if needed, but for now assume compatible
         self._entries, self._errors, self._options = self.loader_func(self.filepath)
         self._loaded = True
-        
+
         # Update watched files and their mtimes
         self._update_watched_files()
 
@@ -52,15 +52,15 @@ class BeancountService:
         """Updates the list of files to watch for changes based on options_map."""
         watched = set()
         watched.add(os.path.abspath(self.filepath))
-        
-        if 'include' in self._options:
-            for path in self._options['include']:
+
+        if "include" in self._options:
+            for path in self._options["include"]:
                 abs_path = os.path.abspath(path)
                 # Exclude the budget file from automatic reloading
                 # We compare absolute paths to be safe
                 if abs_path != os.path.abspath(self.budget_file):
                     watched.add(abs_path)
-        
+
         self._last_mtimes = {}
         for path in watched:
             try:
@@ -77,13 +77,13 @@ class BeancountService:
             return
 
         should_reload = False
-        
+
         # Check main file and all includes (except budget file)
         # We need to check if ANY entry in self._last_mtimes has a newer timestamp on disk
         # We also need to check if the main file changed if it wasn't in the list (should be there)
-        
+
         current_watched_files = list(self._last_mtimes.keys())
-        
+
         for path in current_watched_files:
             try:
                 curr_mtime = os.path.getmtime(path)
@@ -93,7 +93,7 @@ class BeancountService:
             except OSError:
                 should_reload = True
                 break
-        
+
         if should_reload:
             self.load()
 
