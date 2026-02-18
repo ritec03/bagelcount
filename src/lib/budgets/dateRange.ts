@@ -72,3 +72,16 @@ export function overlap(a: DateRange, b: DateRange): DateRange | null {
 
   return new DateRange(overlapStart, overlapEnd);
 }
+
+/**
+ * Return `true` when two {@link DateRange} values represent the same interval.
+ *
+ * Two ranges are equal when their `start` dates are the same day **and** their
+ * `end` dates are either both `null` or the same day.
+ */
+export function dateRangeEquals(a: DateRange, b: DateRange): boolean {
+  if (compareDate(a.start, b.start) !== 0) return false;
+  if (a.end === null && b.end === null) return true;
+  if (a.end === null || b.end === null) return false;
+  return compareDate(a.end, b.end) === 0;
+}

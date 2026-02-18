@@ -292,3 +292,82 @@ function insertAt(
 
   return new BudgetTreeNode(node.accountLabel, node.budgets, updatedChildren);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// deleteBudget
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { dateRangeEquals } from '@/lib/budgets/dateRange';
+
+/**
+ * Return a new tree with the {@link BudgetInstance} whose `effectiveRange`
+ * exactly matches `targetRange` removed from the node identified by
+ * `targetLabel`.
+ *
+ * @throws {Error} if `targetLabel` is not a descendant of `root.accountLabel`,
+ *   if no node with that label exists, or if no budget with that exact range
+ *   exists at the target node.
+ */
+export function deleteBudget(
+  root: BudgetTreeNode,
+  targetLabel: AccountLabel,
+  targetRange: DateRange,
+): BudgetTreeNode {
+  const rootSegs   = root.accountLabel;
+  const targetSegs = targetLabel;
+
+  if (targetSegs.length < rootSegs.length) {
+    throw new Error(
+      `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootSegs)}".`,
+    );
+  }
+  for (let i = 0; i < rootSegs.length; i++) {
+    if (rootSegs[i] !== targetSegs[i]) {
+      throw new Error(
+        `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootSegs)}".`,
+      );
+    }
+  }
+
+  return deleteAt(root, targetSegs, rootSegs.length, targetRange);
+}
+
+function deleteAt(
+  node: BudgetTreeNode,
+  targetSegs: AccountLabel,
+  depth: number,
+  targetRange: DateRange,
+): BudgetTreeNode {
+  // Base case: this node IS the target — remove the matching budget.
+  if (depth === targetSegs.length) {
+    const idx = node.budgets.findIndex((b) => dateRangeEquals(b.effectiveRange, targetRange));
+    if (idx === -1) {
+      throw new Error(
+        `No budget with range ${targetRange.start.toString()}–${targetRange.end?.toString() ?? '∞'} found at "${labelToString(node.accountLabel)}".`,
+      );
+    }
+    const newBudgets = [...node.budgets.slice(0, idx), ...node.budgets.slice(idx + 1)];
+    return new BudgetTreeNode(node.accountLabel, newBudgets, node.children);
+  }
+
+  // Walk down to the next matching child.
+  const nextLabel = makeAccountLabel(targetSegs.slice(0, depth + 1).join(':'));
+  const existingIdx = node.children.findIndex((c) => labelEquals(c.accountLabel, nextLabel));
+
+  if (existingIdx === -1) {
+    throw new Error(
+      `No node with label "${labelToString(nextLabel)}" found under "${labelToString(node.accountLabel)}".`,
+    );
+  }
+
+  const updatedChild = deleteAt(node.children[existingIdx]!, targetSegs, depth + 1, targetRange);
+  const updatedChildren = [
+    ...node.children.slice(0, existingIdx),
+    updatedChild,
+    ...node.children.slice(existingIdx + 1),
+  ];
+
+  return new BudgetTreeNode(node.accountLabel, node.budgets, updatedChildren);
+}
+
+

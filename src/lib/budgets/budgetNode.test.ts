@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { BudgetInstance, BudgetTreeNode, insertBudget, makeAccountLabel } from '@/lib/budgets/budgetNode';
 import { DateRange } from '@/lib/budgets/dateRange';
 import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { deleteBudget } from '@/lib/budgets/budgetNode';
+import { makeAccountLabel } from './accountLabel';
+import { BudgetInstance } from './budgetInstance';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -387,5 +390,81 @@ describe('insertBudget', () => {
     expect(result.budgets[0]!.amount).toBe(100);
     expect(result.budgets[1]!.amount).toBe(200);
     expect(result.budgets[2]!.amount).toBe(300);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('deleteBudget', () => {
+  // (S) Simple – delete the only budget from the root node
+  it('removes a matching budget instance from the root node', () => {
+    const inst = instance('2026-01-01', '2026-12-31', 500);
+    const root = new BudgetTreeNode(label('Expenses'), [inst], []);
+    const result = deleteBudget(root, label('Expenses'), inst.effectiveRange);
+    expect(result.budgets).toHaveLength(0);
+  });
+
+  // (M) Many – removes only the matching instance, leaves others intact
+  it('removes only the instance with the matching date range', () => {
+    const jan = instance('2026-01-01', '2026-01-31', 100);
+    const feb = instance('2026-02-01', '2026-02-28', 200);
+    const mar = instance('2026-03-01', '2026-03-31', 300);
+    const root = new BudgetTreeNode(label('Expenses'), [jan, feb, mar], []);
+    const result = deleteBudget(root, label('Expenses'), feb.effectiveRange);
+    expect(result.budgets).toHaveLength(2);
+    expect(result.budgets[0]!.amount).toBe(100);
+    expect(result.budgets[1]!.amount).toBe(300);
+  });
+
+  // Delete from a child node
+  it('removes a budget instance from a child node', () => {
+    const inst = instance('2026-01-01', '2026-12-31', 300);
+    const child = new BudgetTreeNode(label('Expenses:Food'), [inst], []);
+    const root  = new BudgetTreeNode(label('Expenses'), [], [child]);
+    const result = deleteBudget(root, label('Expenses:Food'), inst.effectiveRange);
+    expect(result.children[0]!.budgets).toHaveLength(0);
+  });
+
+  // Delete from a deeply nested node
+  it('removes a budget instance from a deeply nested node', () => {
+    const inst = instance('2026-01-01', '2026-12-31', 200);
+    const grandchild = new BudgetTreeNode(label('Expenses:Food:Restaurants'), [inst], []);
+    const child = new BudgetTreeNode(label('Expenses:Food'), [], [grandchild]);
+    const root  = new BudgetTreeNode(label('Expenses'), [], [child]);
+    const result = deleteBudget(root, label('Expenses:Food:Restaurants'), inst.effectiveRange);
+    expect(result.children[0]!.children[0]!.budgets).toHaveLength(0);
+  });
+
+  // (E) Exceptions – target label not found in tree
+  it('throws when the target account label does not exist in the tree', () => {
+    const root = new BudgetTreeNode(label('Expenses'), [], []);
+    expect(() =>
+      deleteBudget(root, label('Expenses:Food'), range('2026-01-01', '2026-12-31')),
+    ).toThrow();
+  });
+
+  // (E) Exceptions – label not a descendant of root
+  it('throws when the target label is not a descendant of root', () => {
+    const root = new BudgetTreeNode(label('Expenses'), [], []);
+    expect(() =>
+      deleteBudget(root, label('Income:Salary'), range('2026-01-01', '2026-12-31')),
+    ).toThrow();
+  });
+
+  // (E) Exceptions – no budget with that date range at the target node
+  it('throws when no budget with the given date range exists at the target node', () => {
+    const inst = instance('2026-01-01', '2026-06-30', 500);
+    const root = new BudgetTreeNode(label('Expenses'), [inst], []);
+    expect(() =>
+      deleteBudget(root, label('Expenses'), range('2026-07-01', '2026-12-31')),
+    ).toThrow();
+  });
+
+  // Immutability – original tree is not mutated
+  it('does not mutate the original tree', () => {
+    const inst = instance('2026-01-01', '2026-12-31', 500);
+    const root = new BudgetTreeNode(label('Expenses'), [inst], []);
+    deleteBudget(root, label('Expenses'), inst.effectiveRange);
+    expect(root.budgets).toHaveLength(1);
   });
 });

@@ -142,3 +142,58 @@ describe('overlap', () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { dateRangeEquals } from '@/lib/budgets/dateRange';
+
+describe('dateRangeEquals', () => {
+  // (S) Simple – two identical closed ranges
+  it('returns true for two identical closed ranges', () => {
+    const a = range('2026-01-01', '2026-12-31');
+    const b = range('2026-01-01', '2026-12-31');
+    expect(dateRangeEquals(a, b)).toBe(true);
+  });
+
+  // (O) One – same start, different end
+  it('returns false when ends differ', () => {
+    const a = range('2026-01-01', '2026-06-30');
+    const b = range('2026-01-01', '2026-12-31');
+    expect(dateRangeEquals(a, b)).toBe(false);
+  });
+
+  // Different start
+  it('returns false when starts differ', () => {
+    const a = range('2026-01-01', '2026-12-31');
+    const b = range('2026-02-01', '2026-12-31');
+    expect(dateRangeEquals(a, b)).toBe(false);
+  });
+
+  // (Z) Open-ended – both null ends
+  it('returns true for two identical open-ended ranges', () => {
+    const a = range('2026-01-01', null);
+    const b = range('2026-01-01', null);
+    expect(dateRangeEquals(a, b)).toBe(true);
+  });
+
+  // (B) Boundary – one null end, one non-null
+  it('returns false when one end is null and the other is not', () => {
+    const a = range('2026-01-01', null);
+    const b = range('2026-01-01', '2026-12-31');
+    expect(dateRangeEquals(a, b)).toBe(false);
+  });
+
+  // Commutative
+  it('is commutative', () => {
+    const a = range('2026-03-01', '2026-09-30');
+    const b = range('2026-03-01', '2026-09-30');
+    expect(dateRangeEquals(a, b)).toBe(dateRangeEquals(b, a));
+  });
+
+  // Single-day range
+  it('returns true for two equal single-day ranges', () => {
+    const a = range('2026-06-15', '2026-06-15');
+    const b = range('2026-06-15', '2026-06-15');
+    expect(dateRangeEquals(a, b)).toBe(true);
+  });
+});
