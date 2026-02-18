@@ -39,6 +39,7 @@ export function calculatePeriodSpent(
     }
     
     // For monthly period, check month as well
+    // TODO add quarterly support
     if (periodType === 'monthly' && txMonth !== targetMonth) {
         return;
     }
