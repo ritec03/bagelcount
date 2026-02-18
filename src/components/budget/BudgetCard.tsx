@@ -16,8 +16,10 @@ export interface BudgetCardProps {
     budget: BudgetAllocation;
     /** Current calculated spent amount */
     spentAmount: number;
-    /** Handler for clicking the card body (navigation/edit) */
+    /** Handler for clicking the card body (navigation) */
     onClick: () => void;
+    /** Handler for clicking the edit button */
+    onEdit: () => void;
     /** Period type (Monthly/Yearly) for display context */
     periodType: PeriodType;
     /** Normalization mode used for calculations */
@@ -50,6 +52,7 @@ export function BudgetCard({
     budget, 
     spentAmount, 
     onClick, 
+    onEdit,
     periodType, 
     normalizationMode, 
     validationError, 
@@ -98,22 +101,18 @@ export function BudgetCard({
         <Card 
             style={{ borderLeftWidth: '6px', borderLeftColor: color || 'transparent' }}
             className={cn(
-                "transition-colors group relative",
+                "transition-colors cursor-pointer",
                 validationError && "border-red-500 bg-red-50",
                 !validationError && validationWarnings && validationWarnings.length > 0 && "border-amber-500 bg-amber-50"
             )}
+            onClick={onClick}
         >
-            <div 
-                className="absolute inset-0 z-0 cursor-pointer"
-                onClick={() => console.log("Navigate to", budget.account)}
-                title="View Details"
-            />
-            <CardContent className="p-4 relative z-10 pointer-events-none">
-                <div className="flex items-center justify-between pointer-events-auto">
-                    <div className="flex items-center space-x-4 flex-1 min-w-0 pointer-events-none">
+            <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1 min-w-0">
                         <div className="flex flex-col items-center gap-2">
                             {/* Hierarchy Toggle */}
-                            <div className="flex-shrink-0 pointer-events-auto min-w-[32px] flex justify-center">
+                            <div className="flex-shrink-0 min-w-[32px] flex justify-center">
                                 {isGroup ? (
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -200,7 +199,7 @@ export function BudgetCard({
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 ml-4 relative z-20 pointer-events-auto">
+                    <div className="flex items-center gap-2 ml-4">
                         {/* Tags */}
                         {budget.tags && budget.tags.length > 0 && (
                             <div className="flex gap-2">
@@ -221,7 +220,7 @@ export function BudgetCard({
                                     className="h-8 w-8 hover:bg-slate-100"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onClick();
+                                        onEdit();
                                     }}
                                 >
                                     <Pencil className="h-4 w-4 text-muted-foreground" />

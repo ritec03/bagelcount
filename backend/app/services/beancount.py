@@ -47,7 +47,10 @@ class BeancountService:
         return self._entries
 
     def get_transactions(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        account_name: str | None = None,
     ) -> list[DomainTransaction]:
         txns = []
         for entry in self.entries:
@@ -57,6 +60,21 @@ class BeancountService:
                     continue
                 if end_date and entry.date > end_date:
                     continue
+
+                # Apply Account Filtering
+                # If account_name is provided, at least one posting must match
+                if account_name:
+                    # For a transaction list of "Expenses:Food", we generally want all transactions
+                    # that involve "Expenses:Food" or its subaccounts.
+                    has_match = False
+                    for p in entry.postings:
+                        if p.account == account_name or p.account.startswith(
+                            account_name + ":"
+                        ):
+                            has_match = True
+                            break
+                    if not has_match:
+                        continue
 
                 postings = []
                 for p in entry.postings:

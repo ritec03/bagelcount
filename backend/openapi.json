@@ -11,7 +11,7 @@
           "transactions"
         ],
         "summary": "Get Transactions",
-        "description": "Returns a list of transactions.\nOptional filtering by date range [from_date, to_date].\n\nDefault Behavior: Returns all transactions when no dates are provided.\nFrom Date: Returns transactions on or after the specified date.\nTo Date: Returns transactions on or before the specified date.\nDate Range: Returns transactions within the specified range (inclusive).\nEmpty Range: Returns no transactions if the range excludes all data.",
+        "description": "Returns a list of transactions.\nOptional filtering by date range [from_date, to_date] and account.\n\nDefault Behavior: Returns all transactions when no filters are provided.\nFrom Date: Returns transactions on or after the specified date.\nTo Date: Returns transactions on or before the specified date.\nDate Range: Returns transactions within the specified range (inclusive).\nAccount: Returns transactions that affect the specified account (or its subaccounts).",
         "operationId": "get_transactions_api_v1_transactions__get",
         "parameters": [
           {
@@ -46,6 +46,22 @@
                 }
               ],
               "title": "To Date"
+            }
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
             }
           }
         ],
