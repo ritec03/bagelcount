@@ -210,12 +210,8 @@ export function useBudgetSunburstData(
 } {
   const data = useMemo(() => {
     // Filter to standard budgets only
-    const standardBudgets = budgets.filter((b): b is StandardBudgetOutput =>
-      'frequency' in b
-    );
-
     // Use shared filtering utility
-    const filteredBudgets = filterBudgetsByMode(standardBudgets, periodType, normalizationMode, viewDate);
+    const filteredBudgets = filterBudgetsByMode(budgets, periodType, normalizationMode, viewDate);
 
     // Normalize budget amounts based on view and mode
     const normalizedBudgets = filteredBudgets.map(b => {
@@ -237,7 +233,7 @@ export function useBudgetSunburstData(
     // Calculate spending for selected period
     const spentAmounts = calculatePeriodSpent(
       transactions,
-      standardBudgets, // Pass original budgets to match accounts, logic matches by name
+      normalizedBudgets, // Pass original budgets to match accounts, logic matches by name
       periodType,
       viewDate
     );
