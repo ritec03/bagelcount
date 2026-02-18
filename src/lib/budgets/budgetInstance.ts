@@ -15,13 +15,15 @@ import { DateRange, overlap } from "./dateRange";
 export class BudgetInstance {
   readonly effectiveRange: DateRange;
   readonly amount: number;
+  readonly id: string;
 
-  constructor(effectiveRange: DateRange, amount: number) {
+  constructor(effectiveRange: DateRange, amount: number, id: string) {
     if (amount < 0) {
       throw new RangeError(`BudgetInstance amount must be non-negative, got ${amount}.`);
     }
     this.effectiveRange = effectiveRange;
     this.amount = amount;
+    this.id = id;
   }
 }
 
