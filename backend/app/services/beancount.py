@@ -31,6 +31,7 @@ class BeancountService:
         self._errors = []
         self._options = {}
         self._loaded = False
+        self._last_mtimes = {}  # Map of filename -> mtime
 
     def load(self) -> None:
         """Loads and parses the beancount file."""
@@ -39,11 +40,61 @@ class BeancountService:
         # We will adapt based on the callable signature if needed, but for now assume compatible
         self._entries, self._errors, self._options = self.loader_func(self.filepath)
         self._loaded = True
+        
+        # Update watched files and their mtimes
+        self._update_watched_files()
+
+    def _update_watched_files(self):
+        """Updates the list of files to watch for changes based on options_map."""
+        watched = set()
+        watched.add(os.path.abspath(self.filepath))
+        
+        if 'include' in self._options:
+            for path in self._options['include']:
+                abs_path = os.path.abspath(path)
+                # Exclude the budget file from automatic reloading
+                # We compare absolute paths to be safe
+                if abs_path != os.path.abspath(self.budget_file):
+                    watched.add(abs_path)
+        
+        self._last_mtimes = {}
+        for path in watched:
+            try:
+                self._last_mtimes[path] = os.path.getmtime(path)
+            except OSError:
+                # File might have been deleted or inaccessible
+                pass
+
+    def ensure_fresh(self):
+        """Checks if any watched file has changed and reloads if necessary."""
+        if not self._loaded:
+            self.load()
+            return
+
+        should_reload = False
+        
+        # Check main file and all includes (except budget file)
+        # We need to check if ANY entry in self._last_mtimes has a newer timestamp on disk
+        # We also need to check if the main file changed if it wasn't in the list (should be there)
+        
+        current_watched_files = list(self._last_mtimes.keys())
+        
+        for path in current_watched_files:
+            try:
+                curr_mtime = os.path.getmtime(path)
+                if curr_mtime > self._last_mtimes.get(path, 0):
+                    should_reload = True
+                    break
+            except OSError:
+                should_reload = True
+                break
+        
+        if should_reload:
+            self.load()
 
     @property
     def entries(self) -> list[Any]:
-        if not self._loaded:
-            self.load()
+        self.ensure_fresh()
         return self._entries
 
     def get_transactions(
@@ -52,6 +103,7 @@ class BeancountService:
         end_date: date | None = None,
         account_name: str | None = None,
     ) -> list[DomainTransaction]:
+        self.ensure_fresh()
         txns = []
         for entry in self.entries:
             if isinstance(entry, Transaction):
@@ -104,6 +156,7 @@ class BeancountService:
         An account is active if it has an Open directive and no Close directive (or closed later).
         For simplicity in this V1, we just check if it's ever opened and not currently closed.
         """
+        self.ensure_fresh()
         open_accounts = {}  # name -> Open directive
         closed_accounts = set()
 
@@ -178,6 +231,7 @@ class BeancountService:
         with open(self.budget_file, "a") as f:
             f.write("\n" + entry_string)
 
+        # Explicitly reload or check freshness next time
         self._loaded = False
 
     def get_active_budgets(
@@ -188,6 +242,7 @@ class BeancountService:
         that overlap with the given date range.
         If dates are None, returns all currently active budgets (assuming today).
         """
+        self.ensure_fresh()
         active_candidates = {}  # Key -> List[BudgetAllocation]
         from beancount.core.data import Custom
 
@@ -279,6 +334,11 @@ class BeancountService:
             return False
 
 
-# Dependency for FastAPI
+# Global singleton instance
+_beancount_service_instance: BeancountService | None = None
+
 def get_beancount_service():
-    return BeancountService(settings.beancount_file, settings.budget_file)
+    global _beancount_service_instance
+    if _beancount_service_instance is None:
+        _beancount_service_instance = BeancountService(settings.beancount_file, settings.budget_file)
+    return _beancount_service_instance
