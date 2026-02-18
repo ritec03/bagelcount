@@ -143,8 +143,7 @@ This runs two steps:
 
 ```bash
 cd backend
-BEANCOUNT_FILE=/path/to/main.beancount BUDGET_FILE=/path/to/budgets.beancount \
-  uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
 The API will be available at `http://localhost:8000`. Health check: `http://localhost:8000/health`.
