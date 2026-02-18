@@ -9,6 +9,7 @@ import { columns } from "./transactions/columns"
 import type { TransactionRow } from "./transactions/columns"
 import type { Transaction } from "@/lib/api/types.gen"
 import { getTransactionsApiV1TransactionsGet } from "@/lib/api/sdk.gen"
+import { calculateTransactionAmount } from "@/lib/transactionUtils"
 
 // Real API call
 async function fetchTransactions(accountId: string, startDate?: string, endDate?: string): Promise<Transaction[]> {
@@ -54,17 +55,13 @@ export function TransactionsPage() {
                 const rows: TransactionRow[] = transactions.map(t => {
                     // Find posting for this account or its sub-accounts
                     // Should theoretically handle decoded URI component logic if needed
-                    const posting = t.postings?.find(p => 
-                        p.account === decodedAccount || 
-                        p.account === accountId ||
-                        p.account.startsWith(decodedAccount + ":") ||
-                        p.account.startsWith(accountId + ":")
-                    );
-                    
+                    // Use utility to calculate sum for account hierarchy
+                    const { amount, currency } = calculateTransactionAmount(t, decodedAccount);
+
                     return {
                         ...t,
-                        displayAmount: posting ? parseFloat(posting.units) : 0,
-                        displayCurrency: posting ? posting.currency : "CAD"
+                        displayAmount: amount,
+                        displayCurrency: currency
                     };
                 });
                 
