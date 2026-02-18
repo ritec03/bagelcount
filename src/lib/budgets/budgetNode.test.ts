@@ -203,4 +203,169 @@ describe('BudgetTreeNode', () => {
       expect(result.children).toHaveLength(0); // child pruned entirely
     });
   });
+
+  // ── non-overlapping budget validation ────────────────────────────────────────
+
+  describe('non-overlapping budget validation', () => {
+    // (S) Simple – two clearly overlapping instances
+    it('throws when two budget instances have overlapping date ranges', () => {
+      const a = instance('2026-01-01', '2026-06-30', 500);
+      const b = instance('2026-04-01', '2026-12-31', 600); // overlaps with a
+      expect(() => new BudgetTreeNode('Expenses:Food', [a, b], [])).toThrow(RangeError);
+    });
+
+    // (O) One – single instance is always valid
+    it('accepts a single budget instance', () => {
+      const a = instance('2026-01-01', '2026-12-31', 500);
+      expect(() => new BudgetTreeNode('Expenses:Food', [a], [])).not.toThrow();
+    });
+
+    // (Z) Zero – empty list is valid
+    it('accepts an empty budgets list', () => {
+      expect(() => new BudgetTreeNode('Expenses:Food', [], [])).not.toThrow();
+    });
+
+    // (M) Many – multiple non-overlapping instances are valid
+    it('accepts multiple non-overlapping instances', () => {
+      const jan = instance('2026-01-01', '2026-01-31', 100);
+      const feb = instance('2026-02-01', '2026-02-28', 200);
+      const mar = instance('2026-03-01', '2026-03-31', 300);
+      expect(() => new BudgetTreeNode('Expenses:Food', [jan, feb, mar], [])).not.toThrow();
+    });
+
+    // (B) Boundary – adjacent (touching) instances are NOT overlapping
+    it('accepts instances whose ranges are adjacent (share no day)', () => {
+      const first  = instance('2026-01-01', '2026-01-31', 100);
+      const second = instance('2026-02-01', '2026-06-30', 200);
+      expect(() => new BudgetTreeNode('Expenses:Food', [first, second], [])).not.toThrow();
+    });
+
+    // (B) Boundary – instances sharing exactly one day DO overlap
+    it('throws when two instances share exactly one day', () => {
+      const a = instance('2026-01-01', '2026-01-15', 100);
+      const b = instance('2026-01-15', '2026-01-31', 200);
+      expect(() => new BudgetTreeNode('Expenses:Food', [a, b], [])).toThrow(RangeError);
+    });
+
+    // Open-ended instance overlapping a later instance
+    it('throws when an open-ended instance overlaps a later instance', () => {
+      const a = instance('2026-01-01', null, 500);   // open end → overlaps everything after
+      const b = instance('2026-06-01', '2026-12-31', 300);
+      expect(() => new BudgetTreeNode('Expenses:Food', [a, b], [])).toThrow(RangeError);
+    });
+
+    // Two open-ended instances always overlap
+    it('throws for two open-ended instances', () => {
+      const a = instance('2026-01-01', null, 500);
+      const b = instance('2026-06-01', null, 300);
+      expect(() => new BudgetTreeNode('Expenses:Food', [a, b], [])).toThrow(RangeError);
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { insertBudget, parseAccountLabel } from '@/lib/budgets/budgetNode';
+
+describe('parseAccountLabel', () => {
+  it('splits a single-segment label into one part', () => {
+    expect(parseAccountLabel('Expenses')).toEqual(['Expenses']);
+  });
+
+  it('splits a multi-segment label into parts', () => {
+    expect(parseAccountLabel('Expenses:Food:Restaurants')).toEqual([
+      'Expenses', 'Food', 'Restaurants',
+    ]);
+  });
+
+  it('throws on an empty string', () => {
+    expect(() => parseAccountLabel('')).toThrow();
+  });
+});
+
+describe('insertBudget', () => {
+  // (S) Simple – insert into the root node itself
+  it('inserts a budget instance into the root node when the label matches', () => {
+    const root = new BudgetTreeNode('Expenses', [], []);
+    const inst = instance('2026-01-01', '2026-12-31', 500);
+    const result = insertBudget(root, 'Expenses', inst);
+    expect(result.budgets).toHaveLength(1);
+    expect(result.budgets[0]!.amount).toBe(500);
+  });
+
+  // (O) One – insert into an existing direct child
+  it('inserts into an existing child node', () => {
+    const child = new BudgetTreeNode('Expenses:Food', [], []);
+    const root  = new BudgetTreeNode('Expenses', [], [child]);
+    const inst  = instance('2026-01-01', '2026-12-31', 300);
+    const result = insertBudget(root, 'Expenses:Food', inst);
+    expect(result.children).toHaveLength(1);
+    expect(result.children[0]!.budgets).toHaveLength(1);
+  });
+
+  // (M) Many – insert into a deeply nested existing node
+  it('inserts into a deeply nested existing node', () => {
+    const grandchild = new BudgetTreeNode('Expenses:Food:Restaurants', [], []);
+    const child = new BudgetTreeNode('Expenses:Food', [], [grandchild]);
+    const root  = new BudgetTreeNode('Expenses', [], [child]);
+    const inst  = instance('2026-01-01', '2026-12-31', 200);
+    const result = insertBudget(root, 'Expenses:Food:Restaurants', inst);
+    expect(result.children[0]!.children[0]!.budgets).toHaveLength(1);
+  });
+
+  // Missing intermediate node – creates it
+  it('creates a missing intermediate node when inserting a deep label', () => {
+    // No Expenses:Food node exists; inserting Expenses:Food:Restaurants should
+    // create Expenses:Food as an empty intermediate node.
+    const root = new BudgetTreeNode('Expenses', [], []);
+    const inst = instance('2026-01-01', '2026-12-31', 150);
+    const result = insertBudget(root, 'Expenses:Food:Restaurants', inst);
+
+    expect(result.children).toHaveLength(1);
+    const food = result.children[0]!;
+    expect(food.accountLabel).toBe('Expenses:Food');
+    expect(food.budgets).toHaveLength(0);          // intermediate: no own budgets
+    expect(food.children).toHaveLength(1);
+    const restaurants = food.children[0]!;
+    expect(restaurants.accountLabel).toBe('Expenses:Food:Restaurants');
+    expect(restaurants.budgets).toHaveLength(1);
+  });
+
+  // Multiple missing intermediate nodes
+  it('creates multiple missing intermediate nodes', () => {
+    const root = new BudgetTreeNode('Expenses', [], []);
+    const inst = instance('2026-01-01', '2026-12-31', 75);
+    const result = insertBudget(root, 'Expenses:Food:Restaurants:Sushi', inst);
+
+    const food        = result.children[0]!;
+    const restaurants = food.children[0]!;
+    const sushi       = restaurants.children[0]!;
+    expect(food.accountLabel).toBe('Expenses:Food');
+    expect(restaurants.accountLabel).toBe('Expenses:Food:Restaurants');
+    expect(sushi.accountLabel).toBe('Expenses:Food:Restaurants:Sushi');
+    expect(sushi.budgets).toHaveLength(1);
+  });
+
+  // (E) Exceptions – label does not start with root's account label
+  it('throws when the account label does not start with the root label', () => {
+    const root = new BudgetTreeNode('Expenses', [], []);
+    const inst = instance('2026-01-01', '2026-12-31', 100);
+    expect(() => insertBudget(root, 'Income:Salary', inst)).toThrow();
+  });
+
+  // Immutability – original tree is not mutated
+  it('does not mutate the original tree', () => {
+    const root = new BudgetTreeNode('Expenses', [], []);
+    const inst = instance('2026-01-01', '2026-12-31', 500);
+    insertBudget(root, 'Expenses', inst);
+    expect(root.budgets).toHaveLength(0); // original unchanged
+  });
+
+  // Non-overlapping constraint is respected on insert
+  it('throws when inserting a budget instance that overlaps an existing one', () => {
+    const existing = instance('2026-01-01', '2026-06-30', 500);
+    const root = new BudgetTreeNode('Expenses', [existing], []);
+    const overlapping = instance('2026-04-01', '2026-12-31', 300);
+    expect(() => insertBudget(root, 'Expenses', overlapping)).toThrow(RangeError);
+  });
 });
