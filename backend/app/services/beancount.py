@@ -15,6 +15,8 @@ from app.models.domain import (
 from beancount.core.data import Transaction, Amount, Custom
 from beancount.core import account
 from beancount.parser import printer
+from pydantic import ValidationError
+import hashlib
 import os
 import time
 from decimal import Decimal
@@ -22,6 +24,12 @@ from functools import lru_cache
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _budget_id(account: str, start_date: date, discriminator: str, tags: list[str]) -> str:
+    """Deterministic, reproducible id derived from the budget's natural key."""
+    raw = f"{account}|{start_date.isoformat()}|{discriminator}|{','.join(sorted(tags))}"
+    return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
 
 class BeancountService:
@@ -272,6 +280,7 @@ class BeancountService:
 
                 if "frequency" in meta:
                     budget_obj = StandardBudget(
+                        id=_budget_id(account, b_start, meta["frequency"], tags),
                         account=account,
                         amount=amount,
                         currency=currency,
@@ -284,6 +293,7 @@ class BeancountService:
                 elif "end_date" in meta:
                     b_end = date.fromisoformat(meta["end_date"])
                     budget_obj = CustomBudget(
+                        id=_budget_id(account, b_start, meta["end_date"], tags),
                         account=account,
                         amount=amount,
                         currency=currency,
@@ -300,7 +310,7 @@ class BeancountService:
                     active_candidates[key] = []
                 active_candidates[key].append(budget_obj)
 
-            except (KeyError, ValueError, IndexError, AttributeError):
+            except (KeyError, ValueError, IndexError, AttributeError, ValidationError):
                 continue
 
         resolved_budgets = []
