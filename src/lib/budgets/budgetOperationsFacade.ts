@@ -14,19 +14,16 @@ import type { ConstraintConfig, ConstraintViolationMap } from "./constraints";
 // ==========================================
 
 export interface ExtendedBudget extends StandardBudgetOutput {
-  id: string; // Ensure ID is present on output
+  id: string;
   /**
-   * Active warnings for this specific budget. 
-   * Useful for highlighting the specific row in a UI table.
+   * Active warnings for this specific budget.
    */
   warnings: ConstraintViolationMap; 
 }
 
 export interface OperationSuccess {
   success: true;
-  /** * A map of ALL budgets that changed state due to this operation.
-   * This allows the UI to update the modified budget AND its parent/children
-   * in one go without reloading the whole list.
+  /** A map of ALL budgets that changed state due to this operation.
    */
   updates: Record<string, ExtendedBudget>; 
 }
@@ -70,14 +67,14 @@ export interface BudgetFacade {
 
   /**
    * Adds a new budget.
-   * Note: Takes 'Input' (no ID), returns Result containing the new 'Extended' budget.
+   * Returns Result containing the new 'Extended' budget.
    */
   addBudget(budget: StandardBudgetOutput): OperationResult;
 
   /**
    * Updates an existing budget.
    */
-  updateBudget(id: string, budget: Partial<StandardBudgetOutput>): OperationResult;
+  updateBudget(id: string, budget: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, "id">): OperationResult;
 
   /**
    * Removes a budget.
