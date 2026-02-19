@@ -7,14 +7,11 @@
  */
 
 import type { StandardBudgetOutput } from "../types";
-import type { Constraint } from "./constraints";
+import type { ConstraintViolationMap } from "./constraints";
 
 // ==========================================
 // Data Structures
 // ==========================================
-
-// Maps a Constraint to the list of Budget IDs involved in the violation.
-export type ConstraintViolationMap = Partial<Record<Constraint, string[]>>;
 
 export interface ExtendedBudget extends StandardBudgetOutput {
   id: string; // Ensure ID is present on output
