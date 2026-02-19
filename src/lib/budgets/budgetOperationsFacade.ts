@@ -7,7 +7,7 @@
  */
 
 import type { StandardBudgetOutput } from "../types";
-import type { ConstraintViolationMap } from "./constraints";
+import type { ConstraintConfig, ConstraintViolationMap } from "./constraints";
 
 // ==========================================
 // Data Structures
@@ -54,10 +54,14 @@ export type OperationResult = OperationSuccess | OperationFailure;
 
 export interface BudgetFacade {
   /**
-   * Purely for initialization. 
+   * Purely for initialization.
+   * Performs validation as specified in constraint config.
+   * In this case "blocking" constraints do not block anything as blocking
+   * only relate to changing the budgets (add/update/delete) and here just
+   * generate warnings.
    * Converts raw data into "Extended" objects with warnings calculated.
    */
-  initializeBudgets(rawBudgets: StandardBudgetOutput[]): ExtendedBudget[];
+  initializeBudgets(rawBudgets: StandardBudgetOutput[], config: ConstraintConfig): ExtendedBudget[];
 
   /**
    * Returns active budgets for a view, fully calculated.

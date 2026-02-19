@@ -16,48 +16,42 @@
  * allows that, but it appends warnings to the budget and the affected budgets.
  */
 
-export type SumTopDownWarning =
-  | {
+type Role = "parent" | "child";
+
+export type ConstraintMode = "blocking" | "warning" | "disabled";
+
+type ConstraintWarning = {
+  role: Role;
+  message: string;
+}
+
+export type ParentChildrenSumWarning =
+  | (ConstraintWarning & {
       role: "parent";
-      message: string;
       exceedingChildIds: string[];
       overageAmount: number;
-    }
-  | {
+    })
+  | (ConstraintWarning & {
       role: "child";
-      message: string;
       parentId: string;
-    };
+    });
 
-export type SumBottomUpWarning =
-  | {
-      role: "parent";
-      message: string;
-      mismatchedChildIds: string[];
-    }
-  | {
-      role: "child";
-      message: string;
-      parentId: string;
-    };
-
-export interface ConstraintWarningRegistry {
-  sumTopDown: SumTopDownWarning;
-  sumBottomUp: SumBottomUpWarning;
+export interface ConstraintRegistry {
+  ParentChildrenSum: {
+    Config: Record<Role, ConstraintMode>; 
+    Warning: ParentChildrenSumWarning;
+  };
   // can be extended later
 }
 
-export type ConstraintMode = "blocking" | "warning" | "disabled";
-export type Constraint = keyof ConstraintWarningRegistry;
+export type Constraint = keyof ConstraintRegistry;
 
+// Extracts the specific 'Config' shape from the registry
 export type ConstraintConfig = {
-  [K in Constraint]: {
-    mode: ConstraintMode;
-  };
+  [K in Constraint]: ConstraintRegistry[K]["Config"];
 };
 
-
-// Maps each constraint to an array of its specific payload type
+// Extracts the specific 'Warning' shape from the registry
 export type ConstraintViolationMap = {
-  [K in Constraint]?: ConstraintWarningRegistry[K][];
+  [K in Constraint]?: ConstraintRegistry[K]["Warning"][];
 };
