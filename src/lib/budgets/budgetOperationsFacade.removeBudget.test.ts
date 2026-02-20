@@ -21,6 +21,7 @@ import type {
 } from './budgetOperationsFacade';
 import type { ConstraintConfig } from './constraints';
 import type { StandardBudgetOutput } from '@/lib/types';
+import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
@@ -46,9 +47,8 @@ function raw(o: RawOverride): StandardBudgetOutput {
   return { currency: 'CAD', end_date: null, ...o };
 }
 
-// The facade must be constructed fresh per test to avoid shared state.
 function createBudgetFacade(): BudgetFacade {
-  throw new Error('NOT IMPLEMENTED — replace with real import');
+  return _createBudgetFacade();
 }
 
 function asSuccess(r: ReturnType<BudgetFacade['removeBudget']>): OperationSuccess {

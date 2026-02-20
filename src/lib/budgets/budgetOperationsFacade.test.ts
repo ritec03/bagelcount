@@ -14,9 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import type { StandardBudgetOutput } from '@/lib/types';
 import type { ConstraintConfig } from '@/lib/budgets/constraints';
-import type { BudgetFacade } from '@/lib/budgets/budgetOperationsFacade';
-// TODO: replace with real import once the implementation file is created
-// import { createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
+import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers / fixture factories
@@ -58,11 +56,9 @@ const CHILD_WARNING_ONLY: ConstraintConfig = {
 // The facade must be constructed fresh per test to avoid shared state.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Placeholder — will be replaced by the real implementation. */
-function createBudgetFacade(): BudgetFacade {
-  // Once real implementation exists, import and call the factory here.
-  // For now all tests are expected to FAIL because the impl doesn't exist.
-  throw new Error('NOT IMPLEMENTED — replace with real import');
+/** Constructs a fresh facade with no loaded data. */
+function createBudgetFacade() {
+  return _createBudgetFacade();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

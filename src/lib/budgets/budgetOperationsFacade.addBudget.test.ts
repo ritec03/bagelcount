@@ -18,6 +18,7 @@ import type {
 } from './budgetOperationsFacade';
 import type { ConstraintConfig } from './constraints';
 import type { StandardBudgetOutput } from '@/lib/types';
+import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
@@ -56,9 +57,8 @@ function raw(o: RawOverride): StandardBudgetOutput {
   };
 }
 
-// The facade must be constructed fresh per test to avoid shared state.
 function createBudgetFacade(): BudgetFacade {
-  throw new Error('NOT IMPLEMENTED — replace with real import');
+  return _createBudgetFacade();
 }
 
 // Typed narrowing helpers so test assertions are ergonomic.

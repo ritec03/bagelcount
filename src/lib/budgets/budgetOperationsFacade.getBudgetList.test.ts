@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import type { BudgetFacade, ExtendedBudget } from './budgetOperationsFacade';
 import type { ConstraintConfig } from './constraints';
 import type { StandardBudgetOutput } from '@/lib/types';
+import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
@@ -39,9 +40,8 @@ function raw(o: RawOverride): StandardBudgetOutput {
   };
 }
 
-// The facade must be constructed fresh per test to avoid shared state.
 function createBudgetFacade(): BudgetFacade {
-  throw new Error('NOT IMPLEMENTED — replace with real import');
+  return _createBudgetFacade();
 }
 
 // Convenience: build a Date from an ISO date string.
