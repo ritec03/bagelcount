@@ -16,11 +16,14 @@
  * allows that, but it appends warnings to the budget and the affected budgets.
  */
 
+import type { BudgetTreeNode } from "./budgetNode";
+
 type Role = "parent" | "child";
 
 export type ConstraintMode = "blocking" | "warning" | "disabled";
 
 type ConstraintWarning = {
+  budgetId: string;
   role: Role;
   message: string;
 }
@@ -54,4 +57,17 @@ export type ConstraintConfig = {
 // Extracts the specific 'Warning' shape from the registry
 export type ConstraintViolationMap = {
   [K in Constraint]?: ConstraintRegistry[K]["Warning"][];
+};
+
+/**
+ * Type signature of generic verification function that operates on a budget
+ * instance.
+ */
+export type ConstraintChecker<K extends Constraint> = (
+  budgetNode: BudgetTreeNode,
+  config: ConstraintRegistry[K]["Config"],
+) => ConstraintViolationMap;
+
+export type ConstraintCheckerMap = {
+  [K in Constraint]: ConstraintChecker<K>;
 };
