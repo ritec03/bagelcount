@@ -66,6 +66,24 @@ export class BudgetTreeNode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Throws if `targetLabel` is not a descendant-or-equal path of `rootLabel`.
+ */
+function assertIsDescendant(rootLabel: AccountLabel, targetLabel: AccountLabel): void {
+  if (targetLabel.length < rootLabel.length) {
+    throw new Error(
+      `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootLabel)}".`,
+    );
+  }
+  for (let i = 0; i < rootLabel.length; i++) {
+    if (rootLabel[i] !== targetLabel[i]) {
+      throw new Error(
+        `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootLabel)}".`,
+      );
+    }
+  }
+}
+
+/**
  * Return a new tree with `inst` inserted into the node whose
  * `accountLabel` matches `targetLabel`, creating any missing intermediate
  * nodes along the way.
@@ -83,23 +101,8 @@ export function insertBudget(
   targetLabel: AccountLabel,
   inst: BudgetInstance,
 ): BudgetTreeNode {
-  const rootSegs   = root.accountLabel;
-  const targetSegs = targetLabel;
-
-  if (targetSegs.length < rootSegs.length) {
-    throw new Error(
-      `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootSegs)}".`,
-    );
-  }
-  for (let i = 0; i < rootSegs.length; i++) {
-    if (rootSegs[i] !== targetSegs[i]) {
-      throw new Error(
-        `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootSegs)}".`,
-      );
-    }
-  }
-
-  return insertAt(root, targetSegs, rootSegs.length, inst);
+  assertIsDescendant(root.accountLabel, targetLabel);
+  return insertAt(root, targetLabel, root.accountLabel.length, inst);
 }
 
 function insertAt(
@@ -161,23 +164,8 @@ export function deleteBudget(
   targetLabel: AccountLabel,
   targetRange: DateRange,
 ): BudgetTreeNode {
-  const rootSegs   = root.accountLabel;
-  const targetSegs = targetLabel;
-
-  if (targetSegs.length < rootSegs.length) {
-    throw new Error(
-      `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootSegs)}".`,
-    );
-  }
-  for (let i = 0; i < rootSegs.length; i++) {
-    if (rootSegs[i] !== targetSegs[i]) {
-      throw new Error(
-        `Target "${labelToString(targetLabel)}" is not a descendant of root "${labelToString(rootSegs)}".`,
-      );
-    }
-  }
-
-  return deleteAt(root, targetSegs, rootSegs.length, targetRange);
+  assertIsDescendant(root.accountLabel, targetLabel);
+  return deleteAt(root, targetLabel, root.accountLabel.length, targetRange);
 }
 
 function deleteAt(
