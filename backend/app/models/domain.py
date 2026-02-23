@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
 from datetime import date
 from decimal import Decimal
+import uuid
 
 
 class Account(BaseModel):
@@ -26,7 +27,7 @@ class Transaction(BaseModel):
 
 
 class BaseBudget(BaseModel):
-    id: str
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     account: str
     amount: Decimal
     currency: str = "CAD"  # TODO remove default value here
@@ -37,7 +38,7 @@ class BaseBudget(BaseModel):
 
 class StandardBudget(BaseBudget):
     frequency: Literal["monthly", "quarterly", "yearly"]
-    end_date: date | None
+    end_date: date | None = None
 
 class CustomBudget(BaseBudget):
     end_date: date

@@ -309,6 +309,10 @@
       },
       "CustomBudget-Input": {
         "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
           "account": {
             "type": "string",
             "title": "Account"
@@ -362,6 +366,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
@@ -371,6 +376,10 @@
       },
       "CustomBudget-Output": {
         "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
           "account": {
             "type": "string",
             "title": "Account"
@@ -417,6 +426,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
@@ -463,6 +473,10 @@
       },
       "StandardBudget-Input": {
         "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
           "account": {
             "type": "string",
             "title": "Account"
@@ -516,19 +530,37 @@
               "yearly"
             ],
             "title": "Frequency"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
           }
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
-          "frequency"
+          "frequency",
+          "end_date"
         ],
         "title": "StandardBudget"
       },
       "StandardBudget-Output": {
         "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
           "account": {
             "type": "string",
             "title": "Account"
@@ -575,14 +607,28 @@
               "yearly"
             ],
             "title": "Frequency"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
           }
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
-          "frequency"
+          "frequency",
+          "end_date"
         ],
         "title": "StandardBudget"
       },
