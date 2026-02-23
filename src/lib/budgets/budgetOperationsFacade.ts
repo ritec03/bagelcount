@@ -72,6 +72,15 @@ export interface BudgetFacade {
   addBudget(budget: StandardBudgetOutput): OperationResult;
 
   /**
+   * Validates a candidate budget against the current tree state without
+   * committing any changes.  Useful for real-time form feedback.
+   *
+   * Semantics are identical to `addBudget` but the internal state is never
+   * mutated — the caller is free to call this on every keystroke.
+   */
+  previewAddBudget(budget: StandardBudgetOutput): OperationResult;
+
+  /**
    * Updates an existing budget.
    */
   updateBudget(id: string, budget: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, "id">): OperationResult;
