@@ -161,27 +161,48 @@ class BudgetFacadeImpl implements BudgetFacade {
     this.#rawById = new Map(rawBudgets.map((r) => [r.id, r]));
 
     if (rawBudgets.length === 0) {
-      // Empty tree: use an empty root. We won't insert anything, so the label
-      // doesn't matter. We still need SOME valid AccountLabel for the node.
       this.#tree = BudgetTree.createEmpty(makeAccountLabel('__empty__'), config);
       return [];
     }
 
-    // Derive the single top-level root label from the first segment of the
-    // first budget's account (e.g. "Expenses" from "Expenses:Food").
-    // The caller guarantees that all budgets share the same top-level account.
-    const rootSegment = rawBudgets[0]!.account.split(':')[0]!;
-    const rootLabel = makeAccountLabel(rootSegment);
+    // Sort alphabetically so that ancestors are always inserted before their
+    // descendants (BudgetTree.insert requires the parent node to exist first).
+    const sorted = [...rawBudgets].sort((a, b) => a.account.localeCompare(b.account));
+
+    // Group by top-level root segment (e.g. "Expenses", "Income", "Assets").
+    // The tree is rooted at one segment; budgets from different roots need
+    // separate trees. For the UI we use only the largest group (Expenses).
+    // See TODO below
+    const groups = new Map<string, StandardBudgetOutput[]>();
+    for (const raw of sorted) {
+      const root = raw.account.split(':')[0]!;
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root)!.push(raw);
+    }
+
+    // Pick the group with the most budgets (typically "Expenses").
+    // TODO: support multiple roots if the UI ever needs Income/Assets trees.
+    const primaryGroup = [...groups.values()].reduce(
+      (best, g) => (g.length > best.length ? g : best),
+      [] as StandardBudgetOutput[],
+    );
+
+    if (primaryGroup.length === 0) {
+      this.#tree = BudgetTree.createEmpty(makeAccountLabel('__empty__'), config);
+      return [];
+    }
+
+    const rootLabel = makeAccountLabel(primaryGroup[0]!.account.split(':')[0]!);
     let tree = BudgetTree.createEmpty(rootLabel, config);
 
-    for (const raw of rawBudgets) {
+    for (const raw of primaryGroup) {
       const label = makeAccountLabel(raw.account);
       const inst  = rawToInstance(raw);
       tree = tree.insert(label, inst);
     }
 
     this.#tree = tree;
-    return this.#buildExtendedList(rawBudgets);
+    return this.#buildExtendedList(primaryGroup);
   }
 
   // ── getBudgetList ────────────────────────────────────────────────────────
@@ -206,54 +227,66 @@ class BudgetFacadeImpl implements BudgetFacade {
   // ── addBudget ────────────────────────────────────────────────────────────
 
   addBudget(budget: StandardBudgetOutput): OperationResult {
-    if (this.#tree === null) {
-      return this.#failure({ errors: {}, warnings: {} });
-    }
+    const preview = this.#tentativeAdd(budget);
+    if (!preview.ok) return preview.result;
 
-    // Duplicate id check.
+    // Commit.
+    this.#tree = preview.tentativeTree;
+    this.#rawById.set(budget.id, budget);
+
+    const changedIds = new Set<string>([budget.id, ...affectedIds(preview.allViolations)]);
+    this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
+    return this.#success(preview.allViolations, changedIds);
+  }
+
+  // ── previewAddBudget ─────────────────────────────────────────────────────
+
+  previewAddBudget(budget: StandardBudgetOutput): OperationResult {
+    const preview = this.#tentativeAdd(budget);
+    if (!preview.ok) return preview.result;
+    // No commit — just return the violation state for the caller to display.
+    const changedIds = new Set<string>([budget.id, ...affectedIds(preview.allViolations)]);
+    this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
+    return this.#success(preview.allViolations, changedIds);
+  }
+
+  /** Shared logic: insert tentatively + validate. Does NOT commit. */
+  #tentativeAdd(budget: StandardBudgetOutput):
+    | { ok: false; result: OperationResult }
+    | { ok: true; tentativeTree: BudgetTree; allViolations: ConstraintViolationMap } {
+
+    if (this.#tree === null) {
+      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
+    }
     if (this.#rawById.has(budget.id)) {
-      return this.#failure({ errors: {}, warnings: {} });
+      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
 
     const label = makeAccountLabel(budget.account);
     const inst  = rawToInstance(budget);
 
-    // Lazily bootstrap the tree root when initializeBudgets was called with an
-    // empty list (leaving us with the __empty__ placeholder). The real root
-    // label is derived from the new budget's account.
     let currentTree = this.#tree;
     if (currentTree.root.accountLabel[0] === '__empty__') {
       const rootSegment = budget.account.split(':')[0]!;
       currentTree = BudgetTree.createEmpty(makeAccountLabel(rootSegment), this.#config);
     }
 
-    // Tentatively insert into the tree.
     let tentativeTree: BudgetTree;
     try {
       tentativeTree = currentTree.insert(label, inst);
     } catch {
-      return this.#failure({ errors: {}, warnings: {} });
+      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
 
-    // Run validation on the tentative state.
     const allViolations = tentativeTree.validateTree();
     const errors   = filterViolationsByMode(allViolations, this.#config, (m) => m === 'blocking');
     const warnings = filterViolationsByMode(allViolations, this.#config, (m) => m === 'warning');
 
     if (Object.keys(errors).length > 0) {
-      // Blocked — do NOT commit the tentative tree.
-      return this.#failure({ errors, warnings });
+      return { ok: false, result: this.#failure({ errors, warnings }) };
     }
 
-    // Commit.
-    this.#tree = tentativeTree;
-    this.#rawById.set(budget.id, budget);
-
-    // Always include the new budget AND its direct parent (so the parent's
-    // constraint state is refreshed in the caller, even if no violation exists).
-    const changedIds = new Set<string>([budget.id, ...affectedIds(allViolations)]);
-    this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
-    return this.#success(allViolations, changedIds);
+    return { ok: true, tentativeTree, allViolations };
   }
 
   // ── updateBudget ─────────────────────────────────────────────────────────
