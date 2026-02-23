@@ -11,6 +11,8 @@ import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import type { ExtendedBudget } from "../../lib/budgets/budgetOperationsFacade";
+import { formatViolationWarnings } from "../../lib/budgets/constraintMessages";
 
 // The "Beancount Safe" Approach
 function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: string, endDate: string} {
@@ -42,6 +44,7 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
 
 interface BudgetListProps {
     budgets: BudgetAllocation[];
+    facadeBudgets?: ExtendedBudget[];
     isLoading: boolean;
     onBudgetChange: () => void;
     viewDate: Date;
@@ -86,6 +89,7 @@ function EmptyState() {
 
 export function BudgetList({ 
     budgets, 
+    facadeBudgets,
     isLoading, 
     onBudgetChange,
     viewDate,
@@ -155,15 +159,17 @@ export function BudgetList({
                         const budget = item.budget;
                         const isExpanded = !collapsedIds.has(item.fullPath);
                         
+                        //  TOOD validationError not used anymore
                         let validationError = null;
                         let validationWarnings: string[] = [];
-                        
-                        if ("frequency" in budget) {
-                            const key = `${budget.account}:${budget.frequency}`;
-                            const result = validationResults.get(key);
-                            if (result) {
-                                validationError = result.error;
-                                validationWarnings = result.warnings;
+
+
+                        // TODO add back warning/invalid distinction late if necessary
+                        if (facadeBudgets && "id" in budget) {
+                            const facadeBudget = facadeBudgets.find(fb => fb.id === budget.id);
+                            if (facadeBudget) {
+                                const facadeWarnings = formatViolationWarnings(facadeBudget.warnings);
+                                validationWarnings = [...validationWarnings, ...facadeWarnings];
                             }
                         }
 
