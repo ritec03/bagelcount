@@ -10,7 +10,7 @@ import type { PeriodType } from "@/lib/types";
 export function BudgetDashboard() {
     const { budgets, isLoading, refetch } = useBudgets();
     const { transactions, isLoading: isTxLoading } = useTransactions();
-    const { allBudgets: facadeBudgets } = useBudgetFacade();
+    const facadeResult = useBudgetFacade();
     
     // Budget Period State
     const [viewDate, setViewDate] = useState<Date>(new Date());
@@ -52,7 +52,7 @@ export function BudgetDashboard() {
                 <div className="lg:col-span-1">
                     <BudgetList 
                         budgets={budgets} 
-                        facadeBudgets={facadeBudgets}
+                        facadeResult={facadeResult}
                         isLoading={isLoading} 
                         onBudgetChange={refetch}
                         viewDate={viewDate}

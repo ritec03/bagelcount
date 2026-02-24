@@ -6,7 +6,7 @@
  * explaining violated constraints.
  */
 
-import type { StandardBudgetOutput } from "../types";
+import type { PeriodType, StandardBudgetOutput } from "../types";
 import type { ConstraintConfig, ConstraintViolationMap } from "./constraints";
 
 // ==========================================
@@ -59,6 +59,12 @@ export interface BudgetFacade {
    * Converts raw data into "Extended" objects with warnings calculated.
    */
   initializeBudgets(rawBudgets: StandardBudgetOutput[], config: ConstraintConfig): ExtendedBudget[];
+
+  /**
+   * Normalizes a budget amount based on its frequency to the target period length.
+   * e.g. yearly amount 1200 to monthly period = 100.
+   */
+  normalizeAmount(amount: number, frequency: PeriodType, targetPeriod: PeriodType): number;
 
   /**
    * Returns active budgets for a view, fully calculated.

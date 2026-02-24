@@ -12,7 +12,7 @@
  *              subsequent mutation operations.
  */
 
-import type { StandardBudgetOutput } from '../types';
+import type { PeriodType, StandardBudgetOutput } from '../types';
 import { makeAccountLabel } from './accountLabel';
 import { BudgetInstance } from './budgetInstance';
 import { BudgetTreeNode } from './budgetNode';
@@ -25,6 +25,7 @@ import type {
 } from './constraints';
 import { DateRange } from './dateRange';
 import { NaiveDate } from './dateUtil';
+import { normalizeBudgetAmount } from '../budgetCalculations';
 import type {
   BudgetFacade,
   ExtendedBudget,
@@ -222,6 +223,12 @@ class BudgetFacadeImpl implements BudgetFacade {
     // Preserve original insertion order.
     const visibleRaws = [...this.#rawById.values()].filter((r) => visibleIds.has(r.id));
     return this.#buildExtendedList(visibleRaws);
+  }
+
+  // ── normalizeAmount ──────────────────────────────────────────────────────
+
+  normalizeAmount(amount: number, frequency: PeriodType, targetPeriod: PeriodType): number {
+    return normalizeBudgetAmount(amount, frequency, targetPeriod);
   }
 
   // ── addBudget ────────────────────────────────────────────────────────────

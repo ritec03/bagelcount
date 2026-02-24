@@ -5,9 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createBudgetApiV1BudgetsPost as createBudget } from "../../lib/api/sdk.gen";
 import type { BudgetSubmission } from "../../lib/types";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useBudgetFacade } from "../../hooks/useBudgetFacade";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useBudgetValidation } from "../../hooks/useBudgetValidation";
+import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -86,9 +86,10 @@ function mapInitialDataToFormValues(
 interface BudgetFormProps {
   onSuccess?: () => void;
   initialData?: BudgetSubmission | null;
+  facadeResult: UseBudgetFacadeResult;
 }
 
-export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
+export function BudgetForm({ onSuccess, initialData, facadeResult }: BudgetFormProps) {
   const defaultValues = mapInitialDataToFormValues(initialData);
   const initialType = defaultValues.type || "StandardBudget";
 
@@ -113,7 +114,7 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
   };
 
   // Retrieve current budgets
-  const { allBudgets } = useBudgetFacade();
+  const { allBudgets } = facadeResult;
   // Watch form fields for real-time validation
   // eslint-disable-next-line react-hooks/incompatible-library -- watch() from react-hook-form cannot be memoized, this is expected behavior
   const watchedAccount = watch("account");

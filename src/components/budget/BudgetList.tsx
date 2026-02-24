@@ -11,7 +11,7 @@ import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
-import type { ExtendedBudget } from "../../lib/budgets/budgetOperationsFacade";
+import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
 import { formatViolationWarnings } from "../../lib/budgets/constraintMessages";
 
 // The "Beancount Safe" Approach
@@ -44,7 +44,7 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
 
 interface BudgetListProps {
     budgets: BudgetAllocation[];
-    facadeBudgets?: ExtendedBudget[];
+    facadeResult: UseBudgetFacadeResult;
     isLoading: boolean;
     onBudgetChange: () => void;
     viewDate: Date;
@@ -89,7 +89,7 @@ function EmptyState() {
 
 export function BudgetList({ 
     budgets, 
-    facadeBudgets,
+    facadeResult,
     isLoading, 
     onBudgetChange,
     viewDate,
@@ -99,6 +99,8 @@ export function BudgetList({
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
     const navigate = useNavigate();
+
+    const { allBudgets: facadeBudgets, facade } = facadeResult;
 
     // Use custom hook for logic
     const { 
@@ -190,6 +192,7 @@ export function BudgetList({
                                     isGroup={item.isGroup}
                                     isExpanded={isExpanded}
                                     onToggle={() => toggleCollapse(item.fullPath)}
+                                    facade={facade}
                                     />
                             </div>
                         );
@@ -208,10 +211,10 @@ export function BudgetList({
                     <BudgetForm 
                         onSuccess={handleSuccess} 
                         initialData={editingBudget}
+                        facadeResult={facadeResult}
                     />
                 </DialogContent>
             </Dialog>
         </div>
     );
 }
-

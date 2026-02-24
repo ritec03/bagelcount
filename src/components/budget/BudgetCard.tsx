@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { normalizeBudgetAmount } from '@/lib/budgetCalculations';
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import type { BudgetFacade } from '@/lib/budgets/budgetOperationsFacade';
 
 /**
  * Props for the BudgetCard component.
@@ -36,6 +36,8 @@ export interface BudgetCardProps {
     isExpanded?: boolean;
     /** Handler to toggle group expansion */
     onToggle?: () => void;
+    /** Budget facade used for live computation */
+    facade: BudgetFacade;
 }
 
 /**
@@ -60,14 +62,19 @@ export function BudgetCard({
     color,
     isGroup,
     isExpanded,
-    onToggle
+    onToggle,
+    facade
 }: BudgetCardProps) {
     const isStandard = "frequency" in budget;
     let budgetAmount = parseFloat(budget.amount);
     
     // Apply normalization if standard budget and pro-rated mode
-    if (isStandard && normalizationMode === 'pro-rated') {
-        budgetAmount = normalizeBudgetAmount(budgetAmount, budget.frequency, periodType);
+    if (isStandard && normalizationMode === 'pro-rated' && facade) {
+        budgetAmount = facade.normalizeAmount(
+            budgetAmount, 
+            budget.frequency, 
+            periodType
+        );
     }
 
     const percentageSpent = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
