@@ -247,7 +247,10 @@ class BudgetFacadeImpl implements BudgetFacade {
     // No commit — just return the violation state for the caller to display.
     const changedIds = new Set<string>([budget.id, ...affectedIds(preview.allViolations)]);
     this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
-    return this.#success(preview.allViolations, changedIds);
+
+    // Provide the dummy budget as an override since it's not in the committed rawById map
+    const overrides = new Map([[budget.id, budget]]);
+    return this.#success(preview.allViolations, changedIds, overrides);
   }
 
   /** Shared logic: insert tentatively + validate. Does NOT commit. */
@@ -256,9 +259,11 @@ class BudgetFacadeImpl implements BudgetFacade {
     | { ok: true; tentativeTree: BudgetTree; allViolations: ConstraintViolationMap } {
 
     if (this.#tree === null) {
+      console.log("tree is null")
       return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
     if (this.#rawById.has(budget.id)) {
+      console.log("id already exists")
       return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
 
@@ -274,7 +279,8 @@ class BudgetFacadeImpl implements BudgetFacade {
     let tentativeTree: BudgetTree;
     try {
       tentativeTree = currentTree.insert(label, inst);
-    } catch {
+    } catch (e){
+      console.log("Enounctered error adding budget", e)
       return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
 
@@ -289,50 +295,75 @@ class BudgetFacadeImpl implements BudgetFacade {
     return { ok: true, tentativeTree, allViolations };
   }
 
+  // ── previewUpdateBudget ──────────────────────────────────────────────────
+
+  previewUpdateBudget(
+    id: string,
+    patch: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, 'id'>,
+  ): OperationResult {
+    const preview = this.#tentativeUpdate(id, patch);
+    if (!preview.ok) return preview.result;
+
+    const changedIds = this.#getAffectedIds(id, preview.updated.account, preview.allViolations);
+    
+    // Provide the dummy patched budget as an override to capture its warnings
+    const overrides = new Map([[id, preview.updated]]);
+    return this.#success(preview.allViolations, changedIds, overrides);
+  }
+
   // ── updateBudget ─────────────────────────────────────────────────────────
 
   updateBudget(
     id: string,
     patch: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, 'id'>,
   ): OperationResult {
+    const preview = this.#tentativeUpdate(id, patch);
+    if (!preview.ok) return preview.result;
+
+    // Commit.
+    this.#tree = preview.tentativeTree;
+    this.#rawById.set(id, preview.updated);
+
+    // Always include the updated budget AND its direct parent so constraint
+    // state is refreshed even when no violations are present.
+    const changedIds = this.#getAffectedIds(id, preview.updated.account, preview.allViolations);
+    return this.#success(preview.allViolations, changedIds);
+  }
+
+  /** Shared logic: tentatively apply update patch + validate. Does NOT commit. */
+  #tentativeUpdate(
+    id: string,
+    patch: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, 'id'>,
+  ):
+    | { ok: false; result: OperationResult }
+    | { ok: true; tentativeTree: BudgetTree; allViolations: ConstraintViolationMap; updated: StandardBudgetOutput } {
+    
     const existing = this.#rawById.get(id);
-    if (!existing || this.#tree === null) {
-      return this.#failure({ errors: {}, warnings: {} });
+    if (!existing || this.#tree === null || patch.id !== id) {
+      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
 
-    // id-mismatch guard: the patch's id field must agree with the param id.
-    if (patch.id !== id) {
-      return this.#failure({ errors: {}, warnings: {} });
-    }
-
-    // Produce the merged raw.
     const updated: StandardBudgetOutput = { ...existing, ...patch, id };
 
-    // Remove old instance and insert updated one.
     let tentativeTree: BudgetTree;
     try {
       tentativeTree = this.#tree
         .delete(makeAccountLabel(existing.account), rawToInstance(existing).effectiveRange)
         .insert(makeAccountLabel(updated.account), rawToInstance(updated));
-    } catch {
-      return this.#failure({ errors: {}, warnings: {} });
+    } catch (e) {
+      console.log("Encountered error previewing update", e);
+      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
     }
+
     const allViolations = tentativeTree.validateTree();
     const errors   = filterViolationsByMode(allViolations, this.#config, (m) => m === 'blocking');
-    const warnings = filterViolationsByMode(allViolations, this.#config, (m) => m === 'warning');
-
+    
     if (Object.keys(errors).length > 0) {
-      return this.#failure({ errors, warnings });
+      const warnings = filterViolationsByMode(allViolations, this.#config, (m) => m === 'warning');
+      return { ok: false, result: this.#failure({ errors, warnings }) };
     }
 
-    this.#tree = tentativeTree;
-    this.#rawById.set(id, updated);
-
-    // Always include the updated budget AND its direct parent so constraint
-    // state is refreshed even when no violations are present.
-    const changedIds = new Set<string>([id, ...affectedIds(allViolations)]);
-    this.#findParentIds(updated.account).forEach((pid) => changedIds.add(pid));
-    return this.#success(allViolations, changedIds);
+    return { ok: true, tentativeTree, allViolations, updated };
   }
 
   // ── removeBudget ─────────────────────────────────────────────────────────
@@ -379,16 +410,29 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
+  /** Extract affected ids for a given target budget */
+  #getAffectedIds(id: string, account: string, violations: ConstraintViolationMap): Set<string> {
+    const ids = new Set<string>([id, ...affectedIds(violations)]);
+    this.#findParentIds(account).forEach((pid) => ids.add(pid));
+    return ids;
+  }
+
   /**
    * Build an `OperationSuccess` from the current committed tree state.
    * `changedIds` controls which budgets appear in `updates`.
+   * `overrides` allows injecting temporary pseudo-budgets (like previews)
+   * into the result so their generated warnings can be extracted.
    */
-  #success(violations: ConstraintViolationMap, changedIds: Set<string>): OperationSuccess {
+  #success(
+    violations: ConstraintViolationMap,
+    changedIds: Set<string>,
+    overrides?: Map<string, StandardBudgetOutput>
+  ): OperationSuccess {
     const warningIndex = indexWarningsByBudgetId(violations);
     const updates: Record<string, ExtendedBudget> = {};
 
     for (const id of changedIds) {
-      const raw = this.#rawById.get(id);
+      const raw = overrides?.get(id) ?? this.#rawById.get(id);
       if (!raw) continue; // removed budget — skip
       updates[id] = {
         ...raw,

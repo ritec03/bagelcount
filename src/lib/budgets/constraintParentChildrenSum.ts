@@ -32,7 +32,7 @@ export function checkParentChildrenSum(
   const warnings: ParentChildrenSumWarning[] = [];
 
   for (const parentInst of node.budgets) {
-    const violation = checkInstance(parentInst, node.children, config);
+    const violation = checkInstance(parentInst, node, node.children, config);
     warnings.push(...violation);
   }
 
@@ -50,6 +50,7 @@ export function checkParentChildrenSum(
  */
 function checkInstance(
   parentInst: BudgetInstance,
+  parentNode: BudgetTreeNode,
   childNodes: readonly BudgetTreeNode[],
   config: PCSConfig,
 ): ParentChildrenSumWarning[] {
@@ -88,7 +89,7 @@ function checkInstance(
       warnings.push({
         budgetId: childInst.id,
         role: 'child',
-        message: `This budget contributes to exceeding the parent budget "${parentInst.id}".`,
+        message: `This budget contributes to exceeding the parent budget "${parentNode.accountLabel[parentNode.accountLabel.length - 1]}".`,
         parentId: parentInst.id,
       });
     }

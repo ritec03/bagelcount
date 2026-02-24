@@ -36,7 +36,7 @@ import type { StandardBudgetOutput } from '../lib/types';
  * Change either value to `'blocking'` to prevent the mutation from committing
  * when the constraint is violated.
  */
-const CONSTRAINT_CONFIG: ConstraintConfig = {
+export const CONSTRAINT_CONFIG: ConstraintConfig = {
   ParentChildrenSum: {
     parent: 'warning',
     child: 'warning',

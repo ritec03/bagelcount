@@ -104,7 +104,6 @@ export function BudgetList({
     const { 
         filteredBudgets, 
         renderItems, 
-        validationResults, 
         spentAmounts,
         collapsedIds,
         toggleCollapse 

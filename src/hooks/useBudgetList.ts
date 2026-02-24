@@ -2,7 +2,6 @@ import { useState } from "react";
 import { filterBudgetsByMode } from '@/lib/budgetCalculations';
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
 import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
-import { useBudgetListValidation } from '@/hooks/useBudgetListValidation';
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 
 /**
@@ -44,9 +43,6 @@ export function useBudgetList(
 
     // Calculate spent amounts using custom hook
     const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);
-
-    // Pre-compute validation results for all standard budgets (memoized)
-    const validationResults = useBudgetListValidation(budgets);
 
     // Compute hierarchy
     const hierarchyItems = useBudgetHierarchy(filteredBudgets);
@@ -113,7 +109,6 @@ export function useBudgetList(
     return {
         filteredBudgets,
         renderItems,
-        validationResults,
         spentAmounts,
         collapsedIds,
         toggleCollapse

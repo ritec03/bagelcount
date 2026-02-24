@@ -81,6 +81,12 @@ export interface BudgetFacade {
   previewAddBudget(budget: StandardBudgetOutput): OperationResult;
 
   /**
+   * Validates an update to an existing budget against the current tree state
+   * without committing any changes. Useful for real-time form editing feedback.
+   */
+  previewUpdateBudget(id: string, budget: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, "id">): OperationResult;
+
+  /**
    * Updates an existing budget.
    */
   updateBudget(id: string, budget: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, "id">): OperationResult;
