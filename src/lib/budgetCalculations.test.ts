@@ -14,7 +14,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -56,7 +56,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -85,7 +85,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -125,7 +125,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -163,14 +163,14 @@ describe('calculateMonthlySpent', () => {
           amount: '500.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Transport',
           amount: '300.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       
@@ -212,7 +212,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -249,7 +249,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -278,7 +278,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -315,7 +315,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -341,7 +341,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -370,7 +370,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -396,7 +396,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -429,7 +429,7 @@ describe('calculateMonthlySpent', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Act
@@ -463,7 +463,7 @@ describe('calculatePeriodSpent', () => {
             amount: '500.00',
             currency: 'CAD',
             start_date: '2026-01-01',
-            frequency: 'monthly'
+            frequency: 'monthly', id: 'test-id', end_date: null
         }];
 
         // Act
@@ -497,7 +497,7 @@ describe('calculatePeriodSpent', () => {
             amount: '500.00',
             currency: 'CAD',
             start_date: '2026-01-01',
-            frequency: 'monthly'
+            frequency: 'monthly', id: 'test-id', end_date: null
         }];
 
         // Act
@@ -518,7 +518,7 @@ describe('filterBudgetsByMode', () => {
         amount: '100',
         currency: 'USD',
         start_date: '2024-01-01', // Starts Jan 1
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
     };
 
     const futureMonthlyBudget: BudgetAllocation = {
@@ -526,7 +526,7 @@ describe('filterBudgetsByMode', () => {
         amount: '100',
         currency: 'USD',
         start_date: '2025-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
     };
 
     const yearlyBudget: BudgetAllocation = {
@@ -534,10 +534,11 @@ describe('filterBudgetsByMode', () => {
         amount: '1200',
         currency: 'USD',
         start_date: '2024-01-01',
-        frequency: 'yearly'
+        frequency: 'yearly', id: 'test-id', end_date: null
     };
 
     const projectBudget: BudgetAllocation = {
+        id: 'custom-proj',
         account: 'Expenses:Project',
         amount: '500',
         start_date: '2024-01-01',

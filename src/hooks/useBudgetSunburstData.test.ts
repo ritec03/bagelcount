@@ -29,7 +29,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       const transactions: Transaction[] = [];
 
@@ -52,7 +52,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       const transactions: Transaction[] = [];
 
@@ -86,7 +86,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const now = new Date();
@@ -126,21 +126,21 @@ describe('useBudgetSunburstData', () => {
           amount: '1000.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Food:Groceries',
           amount: '600.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Transport',
           amount: '300.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       const transactions: Transaction[] = [];
@@ -174,7 +174,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const now = new Date();
@@ -225,14 +225,14 @@ describe('useBudgetSunburstData', () => {
           amount: '1000.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Food:Groceries',
           amount: '600.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       const transactions: Transaction[] = [];
@@ -263,21 +263,21 @@ describe('useBudgetSunburstData', () => {
           amount: '1000.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Food:Groceries',
           amount: '600.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Food:Restaurants',
           amount: '400.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       const transactions: Transaction[] = [];
@@ -303,21 +303,21 @@ describe('useBudgetSunburstData', () => {
           amount: '1000.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Food:Groceries',
           amount: '600.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Food:Restaurants',
           amount: '500.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       const transactions: Transaction[] = [];
@@ -351,7 +351,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const now = new Date();
@@ -391,14 +391,14 @@ describe('useBudgetSunburstData', () => {
           amount: '500.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Transport',
           amount: '300.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       const transactions: Transaction[] = [];
@@ -430,7 +430,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       const transactions: Transaction[] = [];
       const viewDate = new Date(2026, 0, 1);
@@ -453,7 +453,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       const transactions: Transaction[] = [];
 
@@ -472,7 +472,7 @@ describe('useBudgetSunburstData', () => {
           amount: '300.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         }
       ];
       
@@ -490,7 +490,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const now = new Date();
@@ -551,7 +551,7 @@ describe('useBudgetSunburstData', () => {
         amount: '1200.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const viewDate = new Date(2026, 0, 1); // Jan 2026
@@ -588,7 +588,7 @@ describe('useBudgetSunburstData', () => {
         amount: '1200.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'yearly' // Yearly budget
+        frequency: 'yearly', id: 'test-id', end_date: null // Yearly budget
       }];
       
       const viewDate = new Date(2026, 0, 1);
@@ -614,7 +614,7 @@ describe('useBudgetSunburstData', () => {
         amount: '1200.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'yearly'
+        frequency: 'yearly', id: 'test-id', end_date: null
       }];
       
       const viewDate = new Date(2026, 0, 1);
@@ -639,7 +639,7 @@ describe('useBudgetSunburstData', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const viewDate = new Date(2026, 0, 1);
@@ -665,14 +665,14 @@ describe('useBudgetSunburstData', () => {
           amount: '500.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Insurance',
           amount: '1200.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'yearly'
+          frequency: 'yearly', id: 'test-id', end_date: null
         }
       ];
       
@@ -699,14 +699,14 @@ describe('useBudgetSunburstData', () => {
           amount: '500.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'monthly'
+          frequency: 'monthly', id: 'test-id', end_date: null
         },
         {
           account: 'Expenses:Insurance',
           amount: '1200.00',
           currency: 'CAD',
           start_date: '2026-01-01',
-          frequency: 'yearly'
+          frequency: 'yearly', id: 'test-id', end_date: null
         }
       ];
       

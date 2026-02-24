@@ -17,7 +17,7 @@ function range(start: string, end: string | null): DateRange {
 }
 
 function instance(start: string, end: string | null, amount: number): BudgetInstance {
-  return new BudgetInstance(range(start, end), amount);
+  return new BudgetInstance(range(start, end), amount, 'test-id');
 }
 
 function label(raw: string) {

@@ -21,8 +21,8 @@ describe('useBudgetValidation', () => {
 
   it('should detect parent budget exceeded by child', () => {
     const budgets: StandardBudgetOutput[] = [
-      { account: 'Expenses:Food', amount: '1000', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] },
-      { account: 'Expenses:Food:Groceries', amount: '600', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] }
+      { account: 'Expenses:Food', amount: '1000', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] },
+      { account: 'Expenses:Food:Groceries', amount: '600', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] }
     ];
     
     const { result } = renderHook(() => 
@@ -36,8 +36,8 @@ describe('useBudgetValidation', () => {
 
   it('should detect insufficient parent for children (WARNING only)', () => {
     const budgets: StandardBudgetOutput[] = [
-      { account: 'Expenses:Food:Groceries', amount: '600', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] },
-      { account: 'Expenses:Food:DiningOut', amount: '400', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] }
+      { account: 'Expenses:Food:Groceries', amount: '600', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] },
+      { account: 'Expenses:Food:DiningOut', amount: '400', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] }
     ];
     
     const { result } = renderHook(() => 
@@ -52,8 +52,8 @@ describe('useBudgetValidation', () => {
 
   it('should allow valid child budget within parent limit', () => {
     const budgets: StandardBudgetOutput[] = [
-      { account: 'Expenses:Food', amount: '1000', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] },
-      { account: 'Expenses:Food:Groceries', amount: '600', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] }
+      { account: 'Expenses:Food', amount: '1000', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] },
+      { account: 'Expenses:Food:Groceries', amount: '600', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] }
     ];
     
     const { result } = renderHook(() => 
@@ -66,8 +66,8 @@ describe('useBudgetValidation', () => {
 
   it('should allow parent budget sufficient for all children', () => {
     const budgets: StandardBudgetOutput[] = [
-      { account: 'Expenses:Food:Groceries', amount: '400', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] },
-      { account: 'Expenses:Food:DiningOut', amount: '300', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] }
+      { account: 'Expenses:Food:Groceries', amount: '400', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] },
+      { account: 'Expenses:Food:DiningOut', amount: '300', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] }
     ];
     
     const { result } = renderHook(() => 
@@ -80,7 +80,7 @@ describe('useBudgetValidation', () => {
 
   it('should handle accounts without parent', () => {
     const budgets: StandardBudgetOutput[] = [
-      { account: 'Income', amount: '5000', frequency: 'monthly', currency: 'CAD', start_date: '2026-01-01', tags: [] }
+      { account: 'Income', amount: '5000', frequency: 'monthly', id: 'test-id', end_date: null, currency: 'CAD', start_date: '2026-01-01', tags: [] }
     ];
     
     const { result } = renderHook(() => 
@@ -92,20 +92,20 @@ describe('useBudgetValidation', () => {
 });
 
 describe('useBudgetValidation (TDD Spec)', () => {
-    // Helper to create budgets easily
     const createBudget = (
         account: string, 
         amount: string, 
         frequency: 'monthly' | 'quarterly' | 'yearly'
     ): StandardBudgetOutput => ({
+        id: 'test-id',
         account,
         amount,
         frequency,
+        end_date: null,
         currency: 'CAD',
         start_date: '2026-01-01',
         tags: []
     });
-
     describe('Parent Validation (Blocking Rules)', () => {
         it('should ALLOW Monthly child fitting into Yearly parent', () => {
             // Parent: $12,000 / year
@@ -324,7 +324,7 @@ describe('useBudgetValidation Reproduction', () => {
       { 
         account: 'Expenses:Food', 
         amount: '500', 
-        frequency: 'monthly', 
+        frequency: 'monthly', id: 'test-id', end_date: null, 
         currency: 'CAD', 
         start_date: '2026-01-01', 
         tags: [] 
@@ -356,9 +356,11 @@ const createBudget = (
     amount: string,
     frequency: 'monthly' | 'quarterly' | 'yearly'
 ): StandardBudgetOutput => ({
+    id: 'test-id',
     account,
     amount,
     frequency,
+    end_date: null,
     currency: 'CAD',
     start_date: '2026-01-01',
     tags: []
@@ -452,10 +454,10 @@ describe('Red Team: useBudgetValidation Edge Cases', () => {
         expect(result.current.affectedChildren).toHaveLength(2);
         // Each item should be an object, not a string
         expect(result.current.affectedChildren[0]).toEqual(
-            expect.objectContaining({ account: 'Expenses:Food:Groceries', frequency: 'monthly' })
+            expect.objectContaining({ account: 'Expenses:Food:Groceries', frequency: 'monthly', id: 'test-id', end_date: null })
         );
         expect(result.current.affectedChildren[1]).toEqual(
-            expect.objectContaining({ account: 'Expenses:Food:DiningOut', frequency: 'quarterly' })
+            expect.objectContaining({ account: 'Expenses:Food:DiningOut', frequency: 'quarterly', id: 'test-id', end_date: null })
         );
     });
 
