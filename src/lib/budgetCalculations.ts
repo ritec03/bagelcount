@@ -74,19 +74,6 @@ export function calculatePeriodSpent(
 }
 
 /**
- * Calculate the total spent amount for each budget account within a specific month.
- * Wrapper around calculatePeriodSpent for backward compatibility.
- */
-export function calculateMonthlySpent(
-  transactions: Transaction[],
-  budgets: BudgetAllocation[],
-  targetYear: number,
-  targetMonth: number
-): Map<string, number> {
-  return calculatePeriodSpent(transactions, budgets, 'monthly', new Date(targetYear, targetMonth, 1));
-}
-
-/**
  * Normalize a budget amount from one frequency to another.
  * Uses annual amount as an intermediate representation for any-to-any conversion.
  */
