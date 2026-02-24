@@ -225,6 +225,34 @@ class BudgetFacadeImpl implements BudgetFacade {
     return this.#buildExtendedList(visibleRaws);
   }
 
+  // ── getActiveBudgets ─────────────────────────────────────────────────────
+
+  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', target: NaiveDate): ExtendedBudget[] {
+    if (this.#tree === null) return [];
+
+    // Custom budgets: filter tree for overlaps, then return only custom type
+    if (periodTypeOrCustom === 'custom') {
+      const filtered = this.#tree.filter(new DateRange(target, target));
+      const visibleIds = new Set(collectAllInstances(filtered.root).map((e) => e.instance.id));
+      
+      const customRaws = [...this.#rawById.values()].filter(
+        (r) => visibleIds.has(r.id) && !('frequency' in r)
+      );
+      return this.#buildExtendedList(customRaws);
+    }
+    
+    // Standard budgets: filter by frequency and start date
+    // Check that it's active on the target date. Standard budgets usually
+    // don't have end dates, but `tree.filter` securely checks the start date.
+    const filtered = this.#tree.filter(new DateRange(target, target));
+    const visibleIds = new Set(collectAllInstances(filtered.root).map((e) => e.instance.id));
+
+    const standardRaws = [...this.#rawById.values()].filter(
+      (r) => visibleIds.has(r.id) && 'frequency' in r && r.frequency === periodTypeOrCustom
+    );
+    return this.#buildExtendedList(standardRaws);
+  }
+
   // ── normalizeAmount ──────────────────────────────────────────────────────
 
   normalizeAmount(amount: number, frequency: PeriodType, targetPeriod: PeriodType): number {

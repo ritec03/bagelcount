@@ -88,7 +88,6 @@ function EmptyState() {
 }
 
 export function BudgetList({ 
-    budgets, 
     facadeResult,
     isLoading, 
     onBudgetChange,
@@ -109,7 +108,11 @@ export function BudgetList({
         spentAmounts,
         collapsedIds,
         toggleCollapse 
-    } = useBudgetList(budgets, viewDate, periodType, normalizationMode);
+    } = useBudgetList(
+      facadeResult,
+      viewDate,
+      periodType
+    );
 
     const handleSuccess = () => {
         setIsDialogOpen(false);

@@ -54,6 +54,16 @@ export class NaiveDate {
   }
 
   /**
+   * Convert a JS Date object into a {@link NaiveDate} using local time.
+   */
+  static fromDate(date: Date): NaiveDate {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return new NaiveDate(year, month, day);
+  }
+
+  /**
    * Serialise back to an ISO 8601 date string (`YYYY-MM-DD`).
    * The output is always zero-padded so it round-trips with {@link fromString}.
    */

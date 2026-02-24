@@ -1,8 +1,44 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { BudgetAllocation } from '../lib/types';
+import type { BudgetAllocation, StandardBudgetOutput } from '../lib/types';
 import type { Transaction } from '../lib/api/types.gen';
 import { useBudgetSunburstData } from './useBudgetSunburstData';
+import { createBudgetFacade } from '../lib/budgets/budgetFacadeImpl';
+import type { UseBudgetFacadeResult } from './useBudgetFacade';
+
+function createMockFacadeResult(budgets: BudgetAllocation[]): UseBudgetFacadeResult {
+  const facade = createBudgetFacade();
+  
+  const standardBudgets: StandardBudgetOutput[] = budgets.map((b, i) => {
+    if (!('frequency' in b) || (b.frequency !== "monthly" && b.frequency !== "quarterly" && b.frequency !== "yearly")) {
+      throw new Error("Invalid or missing frequency in test budget");
+    }
+    
+    // Explicitly construct StandardBudgetOutput to satisfy TypeScript without generic type casts
+    const standardOutput: StandardBudgetOutput = {
+      id: b.id === 'test-id' ? `test-id-${i}` : (b.id || `default-id-${i}`),
+      account: b.account,
+      amount: b.amount ? String(b.amount) : '0',
+      currency: b.currency,
+      start_date: b.start_date || '2026-01-01',
+      end_date: b.end_date || null,
+      frequency: b.frequency,
+      tags: [],
+      created_at: null
+    };
+    return standardOutput;
+  });
+  
+  const allBudgets = facade.initializeBudgets(standardBudgets, { ParentChildrenSum: { parent: 'disabled', child: 'disabled' } });
+  
+  return {
+    allBudgets,
+    isLoading: false,
+    error: null,
+    refresh: async (): Promise<void> => {},
+    facade
+  };
+}
 
 describe('useBudgetSunburstData', () => {
   // Test Strategy: ZOMBIES - (Z) Zero cases
@@ -13,7 +49,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       expect(result.current.isLoading).toBe(false);
@@ -34,7 +70,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       expect(result.current.data.type).toBe('category');
@@ -57,7 +93,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const root = result.current.data;
@@ -104,7 +140,7 @@ describe('useBudgetSunburstData', () => {
       }];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, now, 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, now, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -146,7 +182,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -203,7 +239,7 @@ describe('useBudgetSunburstData', () => {
       ];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, now, 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, now, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -238,7 +274,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -283,7 +319,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -323,7 +359,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert - totalBudget should show actual allocation (1100), not parent budget (1000)
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -369,7 +405,7 @@ describe('useBudgetSunburstData', () => {
       }];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, now, 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, now, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -404,7 +440,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -434,9 +470,10 @@ describe('useBudgetSunburstData', () => {
       }];
       const transactions: Transaction[] = [];
       const viewDate = new Date(2026, 0, 1);
+      const mockResult = createMockFacadeResult(budgets);
 
       // Act
-      const { result, rerender } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'pro-rated'));
+      const { result, rerender } = renderHook(() => useBudgetSunburstData(mockResult, transactions, viewDate, 'monthly', 'pro-rated'));
       const firstResult = result.current.data;
       
       rerender();
@@ -456,10 +493,17 @@ describe('useBudgetSunburstData', () => {
         frequency: 'monthly', id: 'test-id', end_date: null
       }];
       const transactions: Transaction[] = [];
+      let mockResult = createMockFacadeResult(budgets);
 
       // Act
       const { result, rerender } = renderHook(
-        ({ b }) => useBudgetSunburstData(b, transactions, new Date(), 'monthly', 'pro-rated'),
+        ({ b }) => {
+          if (b !== budgets) {
+            budgets = b as BudgetAllocation[];
+            mockResult = createMockFacadeResult(b);
+          }
+          return useBudgetSunburstData(mockResult, transactions, new Date(), 'monthly', 'pro-rated');
+        },
         { initialProps: { b: budgets } }
       );
       const firstResult = result.current.data;
@@ -496,12 +540,12 @@ describe('useBudgetSunburstData', () => {
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
+      const mockResult = createMockFacadeResult(budgets);
       
       let transactions: Transaction[] = [];
 
-      // Act
       const { result, rerender } = renderHook(
-        ({ t }) => useBudgetSunburstData(budgets, t, now, 'monthly', 'pro-rated'),
+        ({ t }) => useBudgetSunburstData(mockResult, t, now, 'monthly', 'pro-rated'),
         { initialProps: { t: transactions } }
       );
       const firstResult = result.current.data;
@@ -533,7 +577,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, new Date(), 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, new Date(), 'monthly', 'pro-rated'));
 
       // Assert
       expect(result.current).toHaveProperty('data');
@@ -570,7 +614,7 @@ describe('useBudgetSunburstData', () => {
       ];
 
       // Act - Yearly View
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'yearly', 'full'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, viewDate, 'yearly', 'full'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -595,7 +639,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, viewDate, 'monthly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -621,7 +665,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'full'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, viewDate, 'monthly', 'full'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -646,7 +690,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'yearly', 'pro-rated'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, viewDate, 'yearly', 'pro-rated'));
 
       // Assert
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -680,7 +724,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'monthly', 'full'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, viewDate, 'monthly', 'full'));
 
       // Assert - Should only see the monthly budget (Food), not the yearly budget (Insurance)
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');
@@ -714,7 +758,7 @@ describe('useBudgetSunburstData', () => {
       const transactions: Transaction[] = [];
 
       // Act
-      const { result } = renderHook(() => useBudgetSunburstData(budgets, transactions, viewDate, 'yearly', 'full'));
+      const { result } = renderHook(() => useBudgetSunburstData(createMockFacadeResult(budgets), transactions, viewDate, 'yearly', 'full'));
 
       // Assert - Should only see the yearly budget (Insurance), not the monthly budget (Food)
       const expensesNode = result.current.data.children?.find(c => c.name === 'Expenses');

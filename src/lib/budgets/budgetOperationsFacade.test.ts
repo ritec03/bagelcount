@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import type { StandardBudgetOutput } from '@/lib/types';
 import type { ConstraintConfig } from '@/lib/budgets/constraints';
 import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
+import { NaiveDate } from '@/lib/budgets/dateUtil';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers / fixture factories
@@ -390,6 +391,107 @@ describe('BudgetFacade.initializeBudgets', () => {
       for (const r of results) {
         expect(r.warnings).toEqual({});
       }
+    });
+  });
+});
+
+describe('BudgetFacade.getActiveBudgets', () => {
+  const facade = _createBudgetFacade();
+  
+  const monthlyRaw = rawBudget({
+    id: 'test-id-1',
+    account: 'Expenses:Monthly',
+    amount: '100',
+    start_date: '2024-01-01',
+    frequency: 'monthly'
+  });
+
+  const futureMonthlyRaw = rawBudget({
+    id: 'test-id-2',
+    account: 'Expenses:Future',
+    amount: '100',
+    start_date: '2025-01-01',
+    frequency: 'monthly'
+  });
+
+  const yearlyRaw = rawBudget({
+    id: 'test-id-3',
+    account: 'Expenses:Yearly',
+    amount: '1200',
+    start_date: '2024-01-01',
+    frequency: 'yearly'
+  });
+
+  // Since our helper function enforce having a frequency, we construct a custom one manually
+  const customBudgetRaw = {
+    id: 'custom-proj',
+    account: 'Expenses:Project',
+    amount: '500',
+    start_date: '2024-01-01',
+    end_date: '2024-06-30'
+  } as StandardBudgetOutput;
+
+  // Seed the facade with all these budgets
+  facade.initializeBudgets([monthlyRaw, futureMonthlyRaw, yearlyRaw, customBudgetRaw], ALL_DISABLED);
+
+  const jan1 = NaiveDate.fromString('2024-01-01');
+  const jun1 = NaiveDate.fromString('2024-06-01');
+  const dec1 = NaiveDate.fromString('2024-12-01');
+
+  describe('Date Overlap Logic', () => {
+    it('should exclude budgets starting in the future', () => {
+      // Asking for monthly budgets on Jan 1 2024.
+      const result = facade.getActiveBudgets('monthly', jan1);
+      const ids = result.map(r => r.id);
+      expect(ids).toContain('test-id-1');
+      expect(ids).not.toContain('test-id-2');
+    });
+
+    it('should include budgets starting on the exact date', () => {
+      const result = facade.getActiveBudgets('monthly', jan1);
+      const ids = result.map(r => r.id);
+      expect(ids).toContain('test-id-1');
+    });
+
+    it('should include budgets started in the past', () => {
+      const result = facade.getActiveBudgets('monthly', jun1);
+      const ids = result.map(r => r.id);
+      expect(ids).toContain('test-id-1');
+    });
+
+    it('should exclude custom budgets that have ended', () => {
+      // Project ends Jun 30. Check on Dec 1.
+      const result = facade.getActiveBudgets('custom', dec1);
+      const ids = result.map(r => r.id);
+      expect(ids).not.toContain('custom-proj');
+    });
+
+    it('should include custom budgets active on date', () => {
+      // Project ends Jun 30. Check on Jun 1.
+      const result = facade.getActiveBudgets('custom', jun1);
+      const ids = result.map(r => r.id);
+      expect(ids).toContain('custom-proj');
+    });
+  });
+
+  describe('Period/Type Logic', () => {
+    it('should only return custom budgets when type is "custom"', () => {
+      const result = facade.getActiveBudgets('custom', jan1);
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe('custom-proj');
+    });
+
+    it('should only return monthly budgets when type is "monthly"', () => {
+      const result = facade.getActiveBudgets('monthly', jan1);
+      // We expect 1 because future monthly hasn't started yet
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe('test-id-1');
+    });
+
+    it('should only return yearly budgets when type is "yearly"', () => {
+      const result = facade.getActiveBudgets('yearly', jan1);
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe('test-id-3');
     });
   });
 });

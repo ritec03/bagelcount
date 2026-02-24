@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
 import { useBudgetSunburstData, type SunburstNode } from '../../hooks/useBudgetSunburstData';
-import type { BudgetAllocation, PeriodType } from '../../lib/types';
+import type { UseBudgetFacadeResult } from '../../hooks/useBudgetFacade';
+import type { PeriodType } from '../../lib/types';
 import type { Transaction } from '../../lib/api/types.gen';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,7 +45,7 @@ function BudgetTooltip({ node }: BudgetTooltipProps) {
 // ============================================================================
 
 interface BudgetSunburstProps {
-  budgets: BudgetAllocation[];
+  facadeResult: UseBudgetFacadeResult;
   transactions: Transaction[];
   isLoading?: boolean;
   viewDate: Date;
@@ -53,7 +54,7 @@ interface BudgetSunburstProps {
 }
 
 export function BudgetSunburst({ 
-  budgets, 
+  facadeResult, 
   transactions,
   isLoading: externalLoading = false,
   viewDate,
@@ -62,7 +63,7 @@ export function BudgetSunburst({
 }: BudgetSunburstProps) {
   // Use the hook to get processed data
   const { data, isLoading: dataLoading } = useBudgetSunburstData(
-    budgets, 
+    facadeResult, 
     transactions, 
     viewDate, 
     periodType, 
@@ -71,8 +72,8 @@ export function BudgetSunburst({
 
   const isLoading = externalLoading || dataLoading;
 
-  // Count actual budgets for empty state
-  const hasBudgets = budgets?.some(b => 'frequency' in b) ?? false;
+  // If no budgets have been created, show empty state
+  const hasBudgets = facadeResult?.allBudgets?.some(b => 'frequency' in b) ?? false;
 
   // ============================================================================
   // Memoized Handlers (Performance: Prevent Nivo re-renders)

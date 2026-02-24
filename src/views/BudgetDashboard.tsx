@@ -38,7 +38,7 @@ export function BudgetDashboard() {
                 {/* Visualization Column (Dominant) */}
                 <div className="lg:col-span-2 space-y-4">
                     <BudgetSunburst 
-                        budgets={budgets} 
+                        facadeResult={facadeResult} 
                         transactions={transactions}
                         isLoading={isLoading || isTxLoading} 
                         viewDate={viewDate}

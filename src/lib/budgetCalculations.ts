@@ -1,5 +1,5 @@
 import type { Transaction } from './api/types.gen';
-import type { BudgetAllocation, PeriodType, NormalizationMode } from './types';
+import type { BudgetAllocation, PeriodType } from './types';
 
 /**
  * Calculate the total spent amount for each budget account within a specific period.
@@ -105,55 +105,4 @@ export function normalizeBudgetAmount(
   return annual / annualMultipliers[viewPeriod];
 }
 
-/**
- * Filter budgets based on the current period type (or 'custom'), normalization mode, and view date.
- * 
- * Logic:
- * - 'custom': Returns only Custom Budgets (Project budgets) that overlap with the view date.
- * - 'monthly'/'yearly': Returns only Standard Budgets with matching frequency that are active on the view date.
- * 
- * @param budgets - List of all budgets
- * @param periodTypeOrCustom - The active view mode: 'monthly', 'yearly', or 'custom'
- * @param mode - Normalization mode (currently unused for filtering logic but kept for API consistency if needed later)
- * @param date - The reference date for overlap checks
- */
-export function filterBudgetsByMode(
-  budgets: BudgetAllocation[],
-  periodTypeOrCustom: PeriodType | 'custom',
-  _mode: NormalizationMode,
-  date: Date
-): BudgetAllocation[] {
-  return budgets.filter(b => {
-    // Check 1: Distinguish Budget Type
-    const isStandard = 'frequency' in b;
-    const isCustom = !isStandard; // Custom/Project budgets don't have frequency
 
-    // Filter by Type
-    if (periodTypeOrCustom === 'custom') {
-        if (!isCustom) return false;
-        
-        // Custom Check: Date Overlap
-        // Active if: start_date <= date <= end_date
-        const startDate = new Date(b.start_date);
-        const endDate = new Date(b.end_date);
-        
-        // Simple overlap check: 
-        // We look at specific point in time 'date' (e.g., first of month).
-        // Is this budget active during this time?
-        return date >= startDate && date <= endDate;
-    } else {
-        // Standard Mode ('monthly' or 'yearly')
-        if (!isStandard) return false;
-        
-        // strict frequency match
-        if (b.frequency !== periodTypeOrCustom) return false;
-
-        // Standard Check: Active Start Date
-        // Active if: start_date <= date
-        // Standard budgets typically run indefinitely until cancelled/replaced, 
-        // so we mainly check they have started.
-        const startDate = new Date(b.start_date);
-        return date >= startDate;
-    }
-  });
-}

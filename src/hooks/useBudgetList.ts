@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { filterBudgetsByMode } from '@/lib/budgetCalculations';
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
 import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import type { PeriodType } from '@/lib/types';
+import { NaiveDate } from '@/lib/budgets/dateUtil';
+import type { UseBudgetFacadeResult } from './useBudgetFacade';
 
 /**
  * Custom hook to manage the logic for the BudgetList component.
@@ -12,18 +13,14 @@ import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/type
  * - Calculating spent amounts and validation results.
  * - Managing hierarchy and collapse state.
  * - Flattening the hierarchy into a renderable list with "Placeholder" items for collapsed groups.
- * 
- * @param budgets - List of all budget allocations.
- * @param viewDate - Current view date.
- * @param periodType - Period type (monthly/yearly).
- * @param normalizationMode - Mode for standardizing budget amounts.
+ * @param facadeResult - The full facade result object.
+ * // TODO keep docs for other params too
  * @returns Object containing filtered data, render items, validation results, and handlers.
  */
 export function useBudgetList(
-    budgets: BudgetAllocation[],
+    facadeResult: UseBudgetFacadeResult,
     viewDate: Date,
-    periodType: PeriodType,
-    normalizationMode: NormalizationMode
+    periodType: PeriodType
 ) {
     // State for collapsed groups (using fullPath)
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -39,7 +36,7 @@ export function useBudgetList(
     };
 
     // Filter budgets based on normalization mode using shared utility
-    const filteredBudgets = filterBudgetsByMode(budgets, periodType, normalizationMode, viewDate);
+    const filteredBudgets = facadeResult.facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate));
 
     // Calculate spent amounts using custom hook
     const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);

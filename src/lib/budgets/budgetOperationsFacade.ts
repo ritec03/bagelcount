@@ -8,6 +8,7 @@
 
 import type { PeriodType, StandardBudgetOutput } from "../types";
 import type { ConstraintConfig, ConstraintViolationMap } from "./constraints";
+import { NaiveDate } from "./dateUtil";
 
 // ==========================================
 // Data Structures
@@ -59,6 +60,18 @@ export interface BudgetFacade {
    * Converts raw data into "Extended" objects with warnings calculated.
    */
   initializeBudgets(rawBudgets: StandardBudgetOutput[], config: ConstraintConfig): ExtendedBudget[];
+
+  /**
+   * Filter budgets based on the current period type (or 'custom'), and view date.
+   * 
+   * Logic:
+   * - 'custom': Returns only Custom Budgets (Project budgets) that overlap with the view date.
+   * - 'monthly'/'yearly': Returns only Standard Budgets with matching frequency that are active on the view date.
+   * 
+   * @param periodTypeOrCustom - The active view mode: 'monthly', 'yearly', or 'custom'
+   * @param date - The reference date for overlap checks
+   */
+  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', date: NaiveDate): ExtendedBudget[];
 
   /**
    * Normalizes a budget amount based on its frequency to the target period length.
