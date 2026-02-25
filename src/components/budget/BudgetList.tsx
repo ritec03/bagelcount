@@ -12,7 +12,7 @@ import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
 import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
-import { formatViolationWarnings } from "../../lib/budgets/constraintMessages";
+import { formatViolationWarnings } from "../../lib/budgets/constraints/constraintMessages";
 
 // The "Beancount Safe" Approach
 function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: string, endDate: string} {

@@ -17,8 +17,7 @@ import type {
   Constraint,
   ConstraintViolationMap,
   ConstraintRegistry,
-} from './constraints/constraints';
-
+} from './constraints';
 // ─────────────────────────────────────────────────────────────────────────────
 // Formatter registry type
 // ─────────────────────────────────────────────────────────────────────────────

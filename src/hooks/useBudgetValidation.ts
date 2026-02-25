@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { StandardBudgetOutput } from "../lib/types";
 import { createBudgetFacade } from "../lib/budgets/budgetFacadeImpl";
 import { CONSTRAINT_CONFIG } from "./useBudgetFacade";
-import { formatMutationResult } from "../lib/budgets/constraintMessages";
+import { formatMutationResult } from "../lib/budgets/constraints/constraintMessages";
 import { normalizeBudgetAmount } from "../lib/budgetCalculations";
 
 export interface AffectedChild {

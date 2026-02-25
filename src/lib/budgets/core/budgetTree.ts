@@ -2,7 +2,7 @@ import type { AccountLabel } from "./accountLabel";
 import type { BudgetInstance } from "./budgetInstance";
 import { deleteBudget, insertBudget, BudgetTreeNode } from "./budgetNode";
 import type { Constraint, ConstraintCheckerMap, ConstraintConfig, ConstraintViolationMap } from "../constraints/constraints";
-import { checkParentChildrenSum } from "../constraintParentChildrenSum";
+import { checkParentChildrenSum } from "../constraints/constraintParentChildrenSum";
 import type { DateRange } from "../../utils/dateRange";
 
 /**
