@@ -15,8 +15,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
-import { createBudgetFacade } from '../lib/budgets/budgetFacadeImpl';
-import type { BudgetFacade, ExtendedBudget } from '../lib/budgets/budgetOperationsFacade';
+import { createBudgetFacade } from '../lib/budgets/service/budgetManager';
+import type { BudgetFacade, ExtendedBudget } from '../lib/budgets/service/budgetManagerInterface';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
 import type { StandardBudgetOutput } from '../lib/models/types';
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { StandardBudgetOutput } from "../lib/models/types";
-import { createBudgetFacade } from "../lib/budgets/budgetFacadeImpl";
+import { createBudgetFacade } from "../lib/budgets/service/budgetManager";
 import { CONSTRAINT_CONFIG } from "./useBudgetFacade";
 import { formatMutationResult } from "../lib/budgets/constraints/constraintMessages";
 import { normalizeBudgetAmount } from "../lib/budgetCalculations";

@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/utils";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
-import type { BudgetFacade } from '@/lib/budgets/budgetOperationsFacade';
+import type { BudgetFacade } from '@/lib/budgets/service/budgetManagerInterface';
 
 /**
  * Props for the BudgetCard component.

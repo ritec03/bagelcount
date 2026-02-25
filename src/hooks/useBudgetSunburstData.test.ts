@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react';
 import type { BudgetAllocation, StandardBudgetOutput } from '../lib/models/types';
 import type { Transaction } from '../lib/api/types.gen';
 import { useBudgetSunburstData } from './useBudgetSunburstData';
-import { createBudgetFacade } from '../lib/budgets/budgetFacadeImpl';
+import { createBudgetFacade } from '../lib/budgets/service/budgetManager';
 import type { UseBudgetFacadeResult } from './useBudgetFacade';
 
 function createMockFacadeResult(budgets: BudgetAllocation[]): UseBudgetFacadeResult {

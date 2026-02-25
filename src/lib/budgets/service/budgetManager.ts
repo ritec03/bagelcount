@@ -12,27 +12,27 @@
  *              subsequent mutation operations.
  */
 
-import type { PeriodType, StandardBudgetOutput } from '../models/types';
-import { makeAccountLabel } from './core/accountLabel';
-import { BudgetInstance } from './core/budgetInstance';
-import { BudgetTreeNode } from './core/budgetNode';
-import { BudgetTree } from './core/budgetTree';
+import type { PeriodType, StandardBudgetOutput } from '../../models/types';
+import { makeAccountLabel } from '../core/accountLabel';
+import { BudgetInstance } from '../core/budgetInstance';
+import { BudgetTreeNode } from '../core/budgetNode';
+import { BudgetTree } from '../core/budgetTree';
 import type {
   Constraint,
   ConstraintConfig,
   ConstraintMode,
   ConstraintViolationMap,
-} from './constraints/constraints';
-import { DateRange } from '../utils/dateRange';
-import { NaiveDate } from '../utils/dateUtil';
-import { normalizeBudgetAmount } from '../budgetCalculations';
+} from '../constraints/constraints';
+import { DateRange } from '../../utils/dateRange';
+import { NaiveDate } from '../../utils/dateUtil';
+import { normalizeBudgetAmount } from '../../budgetCalculations';
 import type {
   BudgetFacade,
   ExtendedBudget,
   OperationFailure,
   OperationResult,
   OperationSuccess,
-} from './budgetOperationsFacade';
+} from './budgetManagerInterface';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Factory function (the public entry point)

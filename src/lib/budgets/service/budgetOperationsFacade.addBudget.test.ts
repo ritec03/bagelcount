@@ -15,10 +15,10 @@ import type {
   ExtendedBudget,
   OperationSuccess,
   OperationFailure,
-} from './budgetOperationsFacade';
-import type { ConstraintConfig } from './constraints/constraints';
+} from './budgetManagerInterface';
+import type { ConstraintConfig } from '../constraints/constraints';
 import type { StandardBudgetOutput } from '@/lib/models/types';
-import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
+import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/service/budgetManager';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
