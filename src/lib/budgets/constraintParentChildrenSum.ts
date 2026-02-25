@@ -1,4 +1,4 @@
-import { overlap } from '@/lib/budgets/dateRange';
+import { overlap } from '@/lib/utils/dateRange';
 import type { BudgetTreeNode } from '@/lib/budgets/budgetNode';
 import type { BudgetInstance } from '@/lib/budgets/budgetInstance';
 import type {

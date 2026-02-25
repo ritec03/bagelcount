@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest';
 import type { StandardBudgetOutput } from '@/lib/types';
 import type { ConstraintConfig } from '@/lib/budgets/constraints';
 import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers / fixture factories

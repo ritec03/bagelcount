@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 
 describe('NaiveDate', () => {
   // (S) Simple – basic round-trip

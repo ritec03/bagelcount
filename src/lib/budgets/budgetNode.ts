@@ -1,4 +1,4 @@
-import { DateRange, dateRangeEquals, overlap } from '@/lib/budgets/dateRange';
+import { DateRange, dateRangeEquals, overlap } from '@/lib/utils/dateRange';
 import { labelEquals, labelToString, makeAccountLabel, type AccountLabel } from './accountLabel';
 import { sortAndValidate, sortedInsert, type BudgetInstance } from './budgetInstance';
 

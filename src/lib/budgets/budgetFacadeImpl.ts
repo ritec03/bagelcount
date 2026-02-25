@@ -23,8 +23,8 @@ import type {
   ConstraintMode,
   ConstraintViolationMap,
 } from './constraints';
-import { DateRange } from './dateRange';
-import { NaiveDate } from './dateUtil';
+import { DateRange } from '../utils/dateRange';
+import { NaiveDate } from '../utils/dateUtil';
 import { normalizeBudgetAmount } from '../budgetCalculations';
 import type {
   BudgetFacade,

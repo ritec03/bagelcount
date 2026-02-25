@@ -41,7 +41,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { budgetSchema, type BudgetFormValues } from "@/lib/schemas";
 
 // Type-safe mapper for initialData

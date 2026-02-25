@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { DateRange, overlap } from '@/lib/budgets/dateRange';
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { DateRange, overlap } from '@/lib/utils/dateRange';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ describe('overlap', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { dateRangeEquals } from '@/lib/budgets/dateRange';
+import { dateRangeEquals } from '@/lib/utils/dateRange';
 
 describe('dateRangeEquals', () => {
   // (S) Simple – two identical closed ranges

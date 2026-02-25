@@ -3,7 +3,7 @@ import type { BudgetInstance } from "./budgetInstance";
 import { deleteBudget, insertBudget, BudgetTreeNode } from "./budgetNode";
 import type { Constraint, ConstraintCheckerMap, ConstraintConfig, ConstraintViolationMap } from "./constraints";
 import { checkParentChildrenSum } from "./constraintParentChildrenSum";
-import type { DateRange } from "./dateRange";
+import type { DateRange } from "../utils/dateRange";
 
 /**
  * The authoritative map of every registered constraint checker.

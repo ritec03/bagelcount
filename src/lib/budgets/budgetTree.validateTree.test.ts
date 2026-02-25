@@ -16,8 +16,8 @@
 import { describe, it, expect } from 'vitest';
 import { BudgetTreeNode } from '@/lib/budgets/budgetNode';
 import { BudgetInstance } from '@/lib/budgets/budgetInstance';
-import { DateRange } from '@/lib/budgets/dateRange';
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { DateRange } from '@/lib/utils/dateRange';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 import { makeAccountLabel } from '@/lib/budgets/accountLabel';
 import { BudgetTree } from '@/lib/budgets/budgetTree';
 import type { ConstraintConfig } from '@/lib/budgets/constraints';

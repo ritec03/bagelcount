@@ -4,9 +4,9 @@ import {
   calculatePeriodSpent,
   normalizeBudgetAmount
 } from '@/lib/budgetCalculations';
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetTree';
-import { generateVibrantColor } from '@/lib/colorUtils';
+import { generateVibrantColor } from '@/lib/utils/colorUtils';
 import type { Transaction } from '../lib/api/types.gen';
 import type { UseBudgetFacadeResult } from './useBudgetFacade';
 

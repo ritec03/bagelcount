@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BudgetTreeNode, insertBudget } from '@/lib/budgets/budgetNode';
-import { DateRange } from '@/lib/budgets/dateRange';
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { DateRange } from '@/lib/utils/dateRange';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 import { deleteBudget } from '@/lib/budgets/budgetNode';
 import { makeAccountLabel } from './accountLabel';
 import { BudgetInstance } from './budgetInstance';

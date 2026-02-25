@@ -1,4 +1,4 @@
-import { NaiveDate } from '@/lib/budgets/dateUtil';
+import { NaiveDate } from '@/lib/utils/dateUtil';
 
 /** Compare two NaiveDates. Returns negative, 0, or positive. */
 function compareDate(a: NaiveDate, b: NaiveDate): number {
