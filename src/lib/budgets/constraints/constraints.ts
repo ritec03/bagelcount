@@ -16,7 +16,7 @@
  * allows that, but it appends warnings to the budget and the affected budgets.
  */
 
-import type { BudgetTreeNode } from "./budgetNode";
+import type { BudgetTreeNode } from "../core/budgetNode";
 
 type Role = "parent" | "child";
 

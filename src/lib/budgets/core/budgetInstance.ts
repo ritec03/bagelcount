@@ -2,7 +2,7 @@
 // BudgetInstance
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { DateRange, overlap } from "../utils/dateRange";
+import { DateRange, overlap } from "../../utils/dateRange";
 
 /**
  * A single budget entry that is valid for a specific {@link DateRange}.

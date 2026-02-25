@@ -13,16 +13,16 @@
  */
 
 import type { PeriodType, StandardBudgetOutput } from '../types';
-import { makeAccountLabel } from './accountLabel';
-import { BudgetInstance } from './budgetInstance';
-import { BudgetTreeNode } from './budgetNode';
-import { BudgetTree } from './budgetTree';
+import { makeAccountLabel } from './core/accountLabel';
+import { BudgetInstance } from './core/budgetInstance';
+import { BudgetTreeNode } from './core/budgetNode';
+import { BudgetTree } from './core/budgetTree';
 import type {
   Constraint,
   ConstraintConfig,
   ConstraintMode,
   ConstraintViolationMap,
-} from './constraints';
+} from './constraints/constraints';
 import { DateRange } from '../utils/dateRange';
 import { NaiveDate } from '../utils/dateUtil';
 import { normalizeBudgetAmount } from '../budgetCalculations';

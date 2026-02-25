@@ -15,12 +15,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { BudgetTreeNode } from '@/lib/budgets/budgetNode';
-import { BudgetInstance } from '@/lib/budgets/budgetInstance';
+import { BudgetTreeNode } from '@/lib/budgets/core/budgetNode';
+import { BudgetInstance } from '@/lib/budgets/core/budgetInstance';
 import { DateRange } from '@/lib/utils/dateRange';
 import { NaiveDate } from '@/lib/utils/dateUtil';
-import { makeAccountLabel } from '@/lib/budgets/accountLabel';
-import type { ConstraintRegistry } from '@/lib/budgets/constraints';
+import { makeAccountLabel } from '@/lib/budgets/core/accountLabel';
+import type { ConstraintRegistry } from '@/lib/budgets/constraints/constraints';
 import { checkParentChildrenSum } from './constraintParentChildrenSum';
 
 // ── helpers ──────────────────────────────────────────────────────────────────

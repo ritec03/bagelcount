@@ -5,7 +5,7 @@ import {
   normalizeBudgetAmount
 } from '@/lib/budgetCalculations';
 import { NaiveDate } from '@/lib/utils/dateUtil';
-import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetTree';
+import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetUiTree';
 import { generateVibrantColor } from '@/lib/utils/colorUtils';
 import type { Transaction } from '../lib/api/types.gen';
 import type { UseBudgetFacadeResult } from './useBudgetFacade';

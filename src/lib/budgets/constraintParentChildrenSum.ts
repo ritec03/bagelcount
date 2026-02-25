@@ -1,11 +1,11 @@
 import { overlap } from '@/lib/utils/dateRange';
-import type { BudgetTreeNode } from '@/lib/budgets/budgetNode';
-import type { BudgetInstance } from '@/lib/budgets/budgetInstance';
+import type { BudgetTreeNode } from '@/lib/budgets/core/budgetNode';
+import type { BudgetInstance } from '@/lib/budgets/core/budgetInstance';
 import type {
   ConstraintRegistry,
   ConstraintViolationMap,
   ParentChildrenSumWarning,
-} from '@/lib/budgets/constraints';
+} from '@/lib/budgets/constraints/constraints';
 
 type PCSConfig = ConstraintRegistry['ParentChildrenSum']['Config'];
 

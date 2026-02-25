@@ -7,7 +7,7 @@
  */
 
 import type { PeriodType, StandardBudgetOutput } from "../types";
-import type { ConstraintConfig, ConstraintViolationMap } from "./constraints";
+import type { ConstraintConfig, ConstraintViolationMap } from "./constraints/constraints";
 import { NaiveDate } from "../utils/dateUtil";
 
 // ==========================================

@@ -19,7 +19,7 @@ import type {
   BudgetFacade,
   OperationSuccess,
 } from './budgetOperationsFacade';
-import type { ConstraintConfig } from './constraints';
+import type { ConstraintConfig } from './constraints/constraints';
 import type { StandardBudgetOutput } from '@/lib/types';
 import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
 
