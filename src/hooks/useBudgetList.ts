@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
 import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
 import type { PeriodType } from '@/lib/models/types';
 import { NaiveDate } from '@/lib/utils/dateUtil';
-import type { UseBudgetFacadeResult } from './useBudgetFacade';
+import { BudgetManagerContext } from "@/components/context";
+import type { ExtendedBudget } from "@/lib/budgets/service/budgetManagerInterface";
 
 /**
  * Custom hook to manage the logic for the BudgetList component.
@@ -18,7 +19,7 @@ import type { UseBudgetFacadeResult } from './useBudgetFacade';
  * @returns Object containing filtered data, render items, validation results, and handlers.
  */
 export function useBudgetList(
-    facadeResult: UseBudgetFacadeResult,
+    facadeBudgets: ExtendedBudget[],
     viewDate: Date,
     periodType: PeriodType
 ) {
@@ -36,8 +37,8 @@ export function useBudgetList(
     };
 
     // Filter budgets based on normalization mode using shared utility
-    const filteredBudgets = facadeResult.facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate));
-
+    const facade = useContext(BudgetManagerContext);
+    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate));
     // Calculate spent amounts using custom hook
     const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);
 

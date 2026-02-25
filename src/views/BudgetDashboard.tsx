@@ -2,13 +2,11 @@ import { useState } from "react";
 import { BudgetList } from "../components/budget/BudgetList";
 import { BudgetSunburst } from "../components/budget/BudgetSunburst";
 import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls";
-import { useBudgets } from "../hooks/useBudgets";
 import { useTransactions } from "../hooks/useTransactions";
 import { useBudgetFacade } from "../hooks/useBudgetFacade";
 import type { PeriodType } from "@/lib/models/types";
 
 export function BudgetDashboard() {
-    const { budgets, isLoading, refetch } = useBudgets();
     const { transactions, isLoading: isTxLoading } = useTransactions();
     const facadeResult = useBudgetFacade();
     
@@ -40,7 +38,7 @@ export function BudgetDashboard() {
                     <BudgetSunburst 
                         facadeResult={facadeResult} 
                         transactions={transactions}
-                        isLoading={isLoading || isTxLoading} 
+                        isLoading={facadeResult.isLoading || isTxLoading} 
                         viewDate={viewDate}
                         periodType={periodType}
                         normalizationMode={normalizationMode}
@@ -51,10 +49,7 @@ export function BudgetDashboard() {
                 {/* List & Edit Column */}
                 <div className="lg:col-span-1">
                     <BudgetList 
-                        budgets={budgets} 
                         facadeResult={facadeResult}
-                        isLoading={isLoading} 
-                        onBudgetChange={refetch}
                         viewDate={viewDate}
                         periodType={periodType}
                         normalizationMode={normalizationMode}

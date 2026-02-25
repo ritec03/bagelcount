@@ -13,12 +13,12 @@
  * 3. Add a message formatter in `constraintMessages.ts`.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useContext } from 'react';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
-import { createBudgetFacade } from '../lib/budgets/service/budgetManager';
 import type { BudgetFacade, ExtendedBudget } from '../lib/budgets/service/budgetManagerInterface';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
 import type { StandardBudgetOutput } from '../lib/models/types';
+import { BudgetManagerContext } from '@/components/context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constraint configuration (hardcoded; extend here as new constraints arrive)
@@ -62,8 +62,7 @@ export interface UseBudgetFacadeResult {
 }
 
 export function useBudgetFacade(): UseBudgetFacadeResult {
-  // Keep a single, stable facade instance for the component's lifetime.
-  const facadeRef = useRef<BudgetFacade>(createBudgetFacade());
+  const budgetFacade = useContext(BudgetManagerContext);
 
   const [allBudgets, setAllBudgets] = useState<ExtendedBudget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,14 +93,14 @@ export function useBudgetFacade(): UseBudgetFacadeResult {
       }
       const dedupedRaw = [...latestByAccount.values()];
 
-      const extended = facadeRef.current.initializeBudgets(dedupedRaw, CONSTRAINT_CONFIG);
+      const extended = budgetFacade.initializeBudgets(dedupedRaw, CONSTRAINT_CONFIG);
       setAllBudgets(extended);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error fetching budgets'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [budgetFacade]);
 
   useEffect(() => {
     refresh();
@@ -111,7 +110,7 @@ export function useBudgetFacade(): UseBudgetFacadeResult {
     allBudgets,
     isLoading,
     error,
-    facade: facadeRef.current,
+    facade: budgetFacade,
     refresh,
   };
 }

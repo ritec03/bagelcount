@@ -13,6 +13,7 @@ import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
 import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
 import { formatViolationWarnings } from "../../lib/budgets/constraints/constraintMessages";
+// import { useContext } from 'react';
 
 // The "Beancount Safe" Approach
 function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: string, endDate: string} {
@@ -43,10 +44,10 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
 }
 
 interface BudgetListProps {
-    budgets: BudgetAllocation[];
+    // budgets: BudgetAllocation[];
     facadeResult: UseBudgetFacadeResult;
-    isLoading: boolean;
-    onBudgetChange: () => void;
+    // isLoading: boolean;
+    // onBudgetChange: () => void;
     viewDate: Date;
     periodType: PeriodType;
     normalizationMode: NormalizationMode;
@@ -89,12 +90,11 @@ function EmptyState() {
 
 export function BudgetList({ 
     facadeResult,
-    isLoading, 
-    onBudgetChange,
     viewDate,
     periodType,
     normalizationMode
 }: BudgetListProps) {
+    "use no memo";
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
     const navigate = useNavigate();
@@ -107,9 +107,9 @@ export function BudgetList({
         renderItems, 
         spentAmounts,
         collapsedIds,
-        toggleCollapse 
+        toggleCollapse
     } = useBudgetList(
-      facadeResult,
+      facadeBudgets,
       viewDate,
       periodType
     );
@@ -117,7 +117,7 @@ export function BudgetList({
     const handleSuccess = () => {
         setIsDialogOpen(false);
         setEditingBudget(null);
-        onBudgetChange();
+        facadeResult.refresh();
     };
 
     const openCreate = () => {
@@ -139,7 +139,7 @@ export function BudgetList({
                 </Button>
             </div>
 
-            {isLoading ? (
+            {facadeResult.isLoading ? (
                 <BudgetListSkeleton />
             ) : filteredBudgets.length === 0 ? (
                 <EmptyState />
