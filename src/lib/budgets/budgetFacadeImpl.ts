@@ -12,7 +12,7 @@
  *              subsequent mutation operations.
  */
 
-import type { PeriodType, StandardBudgetOutput } from '../types';
+import type { PeriodType, StandardBudgetOutput } from '../models/types';
 import { makeAccountLabel } from './core/accountLabel';
 import { BudgetInstance } from './core/budgetInstance';
 import { BudgetTreeNode } from './core/budgetNode';

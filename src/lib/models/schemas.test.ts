@@ -1,4 +1,4 @@
-import { budgetSchema } from '@/lib/schemas';
+import { budgetSchema } from '@/lib/models/schemas';
 import { describe, it, expect } from 'vitest';
 
 describe('budgetSchema discriminated union', () => {

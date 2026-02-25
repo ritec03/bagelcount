@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTransactions } from './useTransactions';
 import { calculatePeriodSpent } from '../lib/budgetCalculations';
-import type { BudgetAllocation, PeriodType } from '../lib/types';
+import type { BudgetAllocation, PeriodType } from '../lib/models/types';
 
 /**
  * Custom hook that calculates spent amounts for budget accounts in the current month.

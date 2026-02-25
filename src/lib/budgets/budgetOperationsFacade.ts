@@ -6,7 +6,7 @@
  * explaining violated constraints.
  */
 
-import type { PeriodType, StandardBudgetOutput } from "../types";
+import type { PeriodType, StandardBudgetOutput } from "../models/types";
 import type { ConstraintConfig, ConstraintViolationMap } from "./constraints/constraints";
 import { NaiveDate } from "../utils/dateUtil";
 

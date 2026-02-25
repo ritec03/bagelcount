@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import type { BudgetFacade, ExtendedBudget } from './budgetOperationsFacade';
 import type { ConstraintConfig } from './constraints/constraints';
-import type { StandardBudgetOutput } from '@/lib/types';
+import type { StandardBudgetOutput } from '@/lib/models/types';
 import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/budgetFacadeImpl';
 
 // ─────────────────────────────────────────────────────────────────────────────

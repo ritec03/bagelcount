@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
 import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
-import type { PeriodType } from '@/lib/types';
+import type { PeriodType } from '@/lib/models/types';
 import { NaiveDate } from '@/lib/utils/dateUtil';
 import type { UseBudgetFacadeResult } from './useBudgetFacade';
 

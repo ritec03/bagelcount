@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createBudgetApiV1BudgetsPost as createBudget } from "../../lib/api/sdk.gen";
-import type { BudgetSubmission } from "../../lib/types";
+import type { BudgetSubmission } from "../../lib/models/types";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useBudgetValidation } from "../../hooks/useBudgetValidation";
@@ -42,7 +42,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils/utils";
-import { budgetSchema, type BudgetFormValues } from "@/lib/schemas";
+import { budgetSchema, type BudgetFormValues } from "@/lib/models/schemas";
 
 // Type-safe mapper for initialData
 function mapInitialDataToFormValues(

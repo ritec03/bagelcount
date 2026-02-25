@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useBudgetValidation } from './useBudgetValidation';
-import type { StandardBudgetOutput } from '../lib/types';
+import type { StandardBudgetOutput } from '../lib/models/types';
 
 describe('useBudgetValidation', () => {
   it('should return valid for non-StandardBudget types', () => {

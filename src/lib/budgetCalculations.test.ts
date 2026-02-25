@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePeriodSpent, normalizeBudgetAmount } from './budgetCalculations';
 import type { Transaction } from './api/types.gen';
-import type { BudgetAllocation } from './types';
+import type { BudgetAllocation } from './models/types';
 
 describe('calculatePeriodSpent', () => {
     // Test Strategy: ZOMBIES - (I) Interface & (B) Boundary

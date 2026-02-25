@@ -10,7 +10,7 @@ import { BudgetForm } from "./BudgetForm";
 import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
 import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
 import { formatViolationWarnings } from "../../lib/budgets/constraints/constraintMessages";
 

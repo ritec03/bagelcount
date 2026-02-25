@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
-import type { BudgetAllocation } from '../lib/types';
+import type { BudgetAllocation } from '../lib/models/types';
 
 export function useBudgets(filters: {   
     date?: string; 

@@ -18,7 +18,7 @@ import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
 import { createBudgetFacade } from '../lib/budgets/budgetFacadeImpl';
 import type { BudgetFacade, ExtendedBudget } from '../lib/budgets/budgetOperationsFacade';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
-import type { StandardBudgetOutput } from '../lib/types';
+import type { StandardBudgetOutput } from '../lib/models/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constraint configuration (hardcoded; extend here as new constraints arrive)

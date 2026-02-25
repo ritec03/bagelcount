@@ -1,5 +1,5 @@
 import type { Transaction } from './api/types.gen';
-import type { BudgetAllocation, PeriodType } from './types';
+import type { BudgetAllocation, PeriodType } from './models/types';
 
 /**
  * Calculate the total spent amount for each budget account within a specific period.

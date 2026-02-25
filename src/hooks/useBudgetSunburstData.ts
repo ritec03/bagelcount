@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { PeriodType, NormalizationMode, StandardBudgetOutput } from '@/lib/types';
+import type { PeriodType, NormalizationMode, StandardBudgetOutput } from '@/lib/models/types';
 import {
   calculatePeriodSpent,
   normalizeBudgetAmount

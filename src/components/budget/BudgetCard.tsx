@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/utils";
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
 import type { BudgetFacade } from '@/lib/budgets/budgetOperationsFacade';
 
 /**

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
 import { useBudgetSunburstData, type SunburstNode } from '../../hooks/useBudgetSunburstData';
 import type { UseBudgetFacadeResult } from '../../hooks/useBudgetFacade';
-import type { PeriodType } from '../../lib/types';
+import type { PeriodType } from '../../lib/models/types';
 import type { Transaction } from '../../lib/api/types.gen';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';

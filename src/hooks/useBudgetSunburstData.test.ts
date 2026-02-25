@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { BudgetAllocation, StandardBudgetOutput } from '../lib/types';
+import type { BudgetAllocation, StandardBudgetOutput } from '../lib/models/types';
 import type { Transaction } from '../lib/api/types.gen';
 import { useBudgetSunburstData } from './useBudgetSunburstData';
 import { createBudgetFacade } from '../lib/budgets/budgetFacadeImpl';

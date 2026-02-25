@@ -4,7 +4,7 @@ import type {
     CustomBudgetOutput,
     StandardBudgetInput,
     CustomBudgetInput 
-} from './api/types.gen';
+} from '../api/types.gen';
 
 // Output types (Read)
 export type BudgetAllocation = StandardBudgetOutput | CustomBudgetOutput;

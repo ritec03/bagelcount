@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Calculator, Calendar } from "lucide-react";
-import type { PeriodType, NormalizationMode } from '@/lib/types';
+import type { PeriodType, NormalizationMode } from '@/lib/models/types';
 
 interface BudgetPeriodControlsProps {
   viewDate: Date;

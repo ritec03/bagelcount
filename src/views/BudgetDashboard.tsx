@@ -5,7 +5,7 @@ import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls"
 import { useBudgets } from "../hooks/useBudgets";
 import { useTransactions } from "../hooks/useTransactions";
 import { useBudgetFacade } from "../hooks/useBudgetFacade";
-import type { PeriodType } from "@/lib/types";
+import type { PeriodType } from "@/lib/models/types";
 
 export function BudgetDashboard() {
     const { budgets, isLoading, refetch } = useBudgets();
