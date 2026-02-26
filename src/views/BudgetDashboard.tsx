@@ -5,7 +5,6 @@ import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls"
 import type { PeriodType } from "@/lib/models/types";
 
 export function BudgetDashboard() {
-    
     // Budget Period State
     const [periodType, setPeriodType] = useState<PeriodType>('monthly');
     const [normalizationMode, setNormalizationMode] = useState<'pro-rated' | 'full'>('pro-rated');

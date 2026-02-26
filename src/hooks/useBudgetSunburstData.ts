@@ -210,13 +210,15 @@ export function useBudgetSunburstData(
 } {
   const facade = useContext(BudgetManagerContext);
   const viewDate = useAppStore((state: AppState) => state.viewDate)
+  const allBudgets = useAppStore((state: AppState) => state.budgetList)
   
   const { transactions, isLoading } = useTransactions() 
   const { isLoading: isLoadingBudgets } = useBudgetQuery();
   const data = useMemo(() => {
     // Filter to standard budgets only
     // Use shared filtering utility attached to the facade 
-    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate), []);
+    // NOTE add dummy budgets parameter
+    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate), allBudgets);
 
     // Normalize budget amounts based on view and mode and strip warnings
     // for building the standard tree
@@ -249,9 +251,11 @@ export function useBudgetSunburstData(
     // Three-step pipeline
     const rawTree = buildBudgetTree(validBudgets);
     const { node: enrichedTree } = enrichWithSpending(rawTree, spentAmounts);
-    return formatForSunburst(enrichedTree);
+    const sunburstTree = formatForSunburst(enrichedTree);
 
-  }, [facade, transactions, viewDate, periodType, normalizationMode]);
+    return sunburstTree;
+
+  }, [facade, transactions, viewDate, periodType, normalizationMode, allBudgets]);
 
   return {
     data,
