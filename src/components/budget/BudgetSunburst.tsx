@@ -42,17 +42,9 @@ function BudgetTooltip({ node }: BudgetTooltipProps) {
 // Main Component (Fully Presentational)
 // ============================================================================
 
-interface BudgetSunburstProps {
-  normalizationMode: 'pro-rated' | 'full';
-}
-
-export function BudgetSunburst({ 
-  normalizationMode
-}: BudgetSunburstProps) {
+export function BudgetSunburst() {
   // Use the hook to get processed data
-  const { data, isLoading } = useBudgetSunburstData(
-    normalizationMode
-  );
+  const { data, isLoading } = useBudgetSunburstData();
 
   // If no budgets have been created, show empty state
   const allBudgets = useAppStore((state: AppState) => state.budgetList)

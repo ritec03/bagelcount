@@ -10,7 +10,7 @@ import { BudgetForm } from "./BudgetForm";
 import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
+import type { BudgetAllocation, PeriodType } from '@/lib/models/types';
 import { useBudgetQuery } from "../../hooks/useBudgetQuery";
 import { formatViolationWarnings } from "../../lib/budgets/constraints/constraintMessages";
 import { useAppStore, type AppState } from "@/hooks/store";
@@ -42,10 +42,6 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
             endDate: toBeancountString(year, 11, 31) 
         };
     }
-}
-
-interface BudgetListProps {
-    normalizationMode: NormalizationMode;
 }
 
 function BudgetListSkeleton() {
@@ -83,9 +79,7 @@ function EmptyState() {
     );
 }
 
-export function BudgetList({ 
-    normalizationMode
-}: BudgetListProps) {
+export function BudgetList() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
     const navigate = useNavigate();
@@ -176,7 +170,6 @@ export function BudgetList({
                                         navigate(`/transactions/${budget.account}?startDate=${startDate}&endDate=${endDate}`);
                                     }}
                                     onEdit={() => openEdit(budget)}
-                                    normalizationMode={normalizationMode}
                                     validationError={validationError}
                                     validationWarnings={validationWarnings}
                                     color={item.color}

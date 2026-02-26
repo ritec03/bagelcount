@@ -1,12 +1,8 @@
-import { useState } from "react";
 import { BudgetList } from "../components/budget/BudgetList";
 import { BudgetSunburst } from "../components/budget/BudgetSunburst";
 import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls";
 
 export function BudgetDashboard() {
-    // Budget Period State
-    const [normalizationMode, setNormalizationMode] = useState<'pro-rated' | 'full'>('pro-rated');
-
     return (
         <div className="container mx-auto p-6 space-y-6">
             <div className="flex flex-col space-y-2">
@@ -15,25 +11,17 @@ export function BudgetDashboard() {
             </div>
 
             {/* Period Controls */}
-            <BudgetPeriodControls 
-                normalizationMode={normalizationMode}
-                onNormalizationChange={setNormalizationMode}
-            />
-
+            <BudgetPeriodControls/>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
                 {/* Visualization Column (Dominant) */}
                 <div className="lg:col-span-2 space-y-4">
-                    <BudgetSunburst 
-                        normalizationMode={normalizationMode}
-                    />
+                    <BudgetSunburst/>
                     {/* Placeholder for future insights or custom budget list if separated */}
                 </div>
 
                 {/* List & Edit Column */}
                 <div className="lg:col-span-1">
-                    <BudgetList 
-                        normalizationMode={normalizationMode}
-                    />
+                    <BudgetList/>
                 </div>
             </div>
         </div>
