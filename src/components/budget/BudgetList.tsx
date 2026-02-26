@@ -45,7 +45,6 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
 }
 
 interface BudgetListProps {
-    periodType: PeriodType;
     normalizationMode: NormalizationMode;
 }
 
@@ -85,7 +84,6 @@ function EmptyState() {
 }
 
 export function BudgetList({ 
-    periodType,
     normalizationMode
 }: BudgetListProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -94,6 +92,7 @@ export function BudgetList({
 
     const allBudgets = useAppStore((state: AppState) => state.budgetList)
     const viewDate = useAppStore((state: AppState) => state.viewDate)
+    const periodType = useAppStore((state: AppState) => state.periodType)
 
     const { isLoading } = useBudgetQuery();
 
@@ -106,7 +105,6 @@ export function BudgetList({
         toggleCollapse
     } = useBudgetList(
       allBudgets,
-      periodType
     );
     console.groupEnd();
 
@@ -178,7 +176,6 @@ export function BudgetList({
                                         navigate(`/transactions/${budget.account}?startDate=${startDate}&endDate=${endDate}`);
                                     }}
                                     onEdit={() => openEdit(budget)}
-                                    periodType={periodType}
                                     normalizationMode={normalizationMode}
                                     validationError={validationError}
                                     validationWarnings={validationWarnings}

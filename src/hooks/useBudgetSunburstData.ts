@@ -1,5 +1,5 @@
 import { useContext, useMemo } from 'react';
-import type { PeriodType, NormalizationMode, StandardBudgetOutput } from '@/lib/models/types';
+import type { NormalizationMode, StandardBudgetOutput } from '@/lib/models/types';
 import {
   calculatePeriodSpent,
   normalizeBudgetAmount
@@ -202,7 +202,6 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
  * 3. Format with colors for visualization
  */
 export function useBudgetSunburstData(
-  periodType: PeriodType,
   normalizationMode: NormalizationMode
 ): {
   data: CategoryNode;
@@ -211,6 +210,7 @@ export function useBudgetSunburstData(
   const facade = useContext(BudgetManagerContext);
   const viewDate = useAppStore((state: AppState) => state.viewDate)
   const allBudgets = useAppStore((state: AppState) => state.budgetList)
+  const periodType = useAppStore((state: AppState) => state.periodType)
   
   const { transactions, isLoading } = useTransactions() 
   const { isLoading: isLoadingBudgets } = useBudgetQuery();

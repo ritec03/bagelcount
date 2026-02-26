@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
 import { useBudgetSunburstData, type SunburstNode } from '../../hooks/useBudgetSunburstData';
-import type { PeriodType } from '../../lib/models/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, type AppState } from '@/hooks/store';
@@ -44,17 +43,14 @@ function BudgetTooltip({ node }: BudgetTooltipProps) {
 // ============================================================================
 
 interface BudgetSunburstProps {
-  periodType: PeriodType;
   normalizationMode: 'pro-rated' | 'full';
 }
 
 export function BudgetSunburst({ 
-  periodType,
   normalizationMode
 }: BudgetSunburstProps) {
   // Use the hook to get processed data
   const { data, isLoading } = useBudgetSunburstData(
-    periodType, 
     normalizationMode
   );
 

@@ -2,11 +2,9 @@ import { useState } from "react";
 import { BudgetList } from "../components/budget/BudgetList";
 import { BudgetSunburst } from "../components/budget/BudgetSunburst";
 import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls";
-import type { PeriodType } from "@/lib/models/types";
 
 export function BudgetDashboard() {
     // Budget Period State
-    const [periodType, setPeriodType] = useState<PeriodType>('monthly');
     const [normalizationMode, setNormalizationMode] = useState<'pro-rated' | 'full'>('pro-rated');
 
     return (
@@ -18,8 +16,6 @@ export function BudgetDashboard() {
 
             {/* Period Controls */}
             <BudgetPeriodControls 
-                periodType={periodType}
-                onPeriodChange={setPeriodType}
                 normalizationMode={normalizationMode}
                 onNormalizationChange={setNormalizationMode}
             />
@@ -28,7 +24,6 @@ export function BudgetDashboard() {
                 {/* Visualization Column (Dominant) */}
                 <div className="lg:col-span-2 space-y-4">
                     <BudgetSunburst 
-                        periodType={periodType}
                         normalizationMode={normalizationMode}
                     />
                     {/* Placeholder for future insights or custom budget list if separated */}
@@ -37,7 +32,6 @@ export function BudgetDashboard() {
                 {/* List & Edit Column */}
                 <div className="lg:col-span-1">
                     <BudgetList 
-                        periodType={periodType}
                         normalizationMode={normalizationMode}
                     />
                 </div>

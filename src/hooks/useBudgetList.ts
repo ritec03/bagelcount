@@ -1,7 +1,6 @@
 import { useContext, useState } from "react";
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
 import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
-import type { PeriodType } from '@/lib/models/types';
 import { NaiveDate } from '@/lib/utils/dateUtil';
 import { BudgetManagerContext } from "@/components/context";
 import type { ExtendedBudget } from "@/lib/budgets/service/budgetManagerInterface";
@@ -21,7 +20,6 @@ import { useAppStore, type AppState } from "./store";
  */
 export function useBudgetList(
     facadeBudgets: ExtendedBudget[],
-    periodType: PeriodType
 ) {
     const viewDate = useAppStore((state: AppState) => state.viewDate)
     // State for collapsed groups (using fullPath)
@@ -36,6 +34,8 @@ export function useBudgetList(
         }
         setCollapsedIds(newCollapsed);
     };
+
+    const periodType = useAppStore((state: AppState) => state.periodType)
 
     // Filter budgets based on normalization mode using shared utility
     const facade = useContext(BudgetManagerContext);

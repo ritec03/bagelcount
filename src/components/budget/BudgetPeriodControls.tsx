@@ -6,20 +6,19 @@ import type { PeriodType, NormalizationMode } from '@/lib/models/types';
 import { useAppStore, type AppState } from "@/hooks/store";
 
 interface BudgetPeriodControlsProps {
-  periodType: PeriodType;
-  onPeriodChange: (type: PeriodType) => void;
   normalizationMode: NormalizationMode;
   onNormalizationChange: (mode: NormalizationMode) => void;
 }
 
 export function BudgetPeriodControls({
-  periodType,
-  onPeriodChange,
   normalizationMode,
   onNormalizationChange
 }: BudgetPeriodControlsProps) {
   const viewDate = useAppStore((state: AppState) => state.viewDate)
   const onDateChange = useAppStore((state: AppState) => state.setViewDate)
+  const periodType = useAppStore((state: AppState) => state.periodType)
+  const setPeriodType = useAppStore((state: AppState) => state.setPeriodType)
+
   
   const handlePrevious = () => {
     const newDate = new Date(viewDate);
@@ -62,7 +61,7 @@ export function BudgetPeriodControls({
         <div className="flex items-center gap-2">
           <Select 
             value={periodType} 
-            onValueChange={(val: PeriodType) => onPeriodChange(val)}
+            onValueChange={(val: PeriodType) => setPeriodType(val)}
           >
             <SelectTrigger className="w-40">
               <Calendar className="mr-2 h-4 w-4" />

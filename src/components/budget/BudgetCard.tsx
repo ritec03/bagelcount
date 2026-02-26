@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/utils";
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
+import type { BudgetAllocation, NormalizationMode } from '@/lib/models/types';
 import { useContext } from "react";
 import { BudgetManagerContext } from "../context";
+import { useAppStore, type AppState } from "@/hooks/store";
 
 /**
  * Props for the BudgetCard component.
@@ -21,8 +22,6 @@ export interface BudgetCardProps {
     onClick: () => void;
     /** Handler for clicking the edit button */
     onEdit: () => void;
-    /** Period type (Monthly/Yearly) for display context */
-    periodType: PeriodType;
     /** Normalization mode used for calculations */
     normalizationMode: NormalizationMode;
     /** Validation error message if any */
@@ -54,7 +53,6 @@ export function BudgetCard({
     spentAmount, 
     onClick, 
     onEdit,
-    periodType, 
     normalizationMode, 
     validationError, 
     validationWarnings, 
@@ -67,6 +65,7 @@ export function BudgetCard({
     let budgetAmount = parseFloat(budget.amount);
 
     const facade = useContext(BudgetManagerContext);
+    const periodType = useAppStore((state: AppState) => state.periodType)
     
     // Apply normalization if standard budget and pro-rated mode
     if (isStandard && normalizationMode === 'pro-rated' && facade) {
