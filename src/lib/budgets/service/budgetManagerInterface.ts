@@ -51,6 +51,9 @@ export type OperationResult = OperationSuccess | OperationFailure;
 // ==========================================
 
 export interface BudgetFacade {
+  subscribe(listener: () => void): () => void;
+  getBudgetsSnapshot: () => ExtendedBudget[];
+
   /**
    * Purely for initialization.
    * Performs validation as specified in constraint config.
@@ -71,7 +74,7 @@ export interface BudgetFacade {
    * @param periodTypeOrCustom - The active view mode: 'monthly', 'yearly', or 'custom'
    * @param date - The reference date for overlap checks
    */
-  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', date: NaiveDate): ExtendedBudget[];
+  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', date: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[];
 
   /**
    * Normalizes a budget amount based on its frequency to the target period length.

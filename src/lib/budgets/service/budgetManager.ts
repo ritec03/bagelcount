@@ -152,6 +152,32 @@ class BudgetFacadeImpl implements BudgetFacade {
     ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
   };
 
+  // Create a Set to hold listener callbacks
+  #listeners = new Set<() => void>();
+  #snapshotCache: ExtendedBudget[] = [];
+
+  // Create the subscribe method (React will pass the listener function here)
+  subscribe = (listener: () => void) => {
+      this.#listeners.add(listener);
+      // React requires the subscribe function to return an unsubscribe function!
+      return () => {
+          this.#listeners.delete(listener);
+      };
+  };
+
+  // React calls this to get the data. It returns the exact same reference 
+  // UNLESS the tree has been modified.
+  getBudgetsSnapshot = () => {
+
+      return this.#snapshotCache;
+  };
+
+  #updateCacheAndNotifyListeners() {
+        // TODO: fix this - make getBudgetList method accept no range.
+        this.#snapshotCache = this.getBudgetList({start: new Date("2000-01-01"), end: new Date("2100-01-01")});
+        this.#listeners.forEach((listener) => listener());
+    }
+
   // ── initializeBudgets ────────────────────────────────────────────────────
 
   initializeBudgets(
@@ -203,6 +229,7 @@ class BudgetFacadeImpl implements BudgetFacade {
     }
 
     this.#tree = tree;
+    this.#updateCacheAndNotifyListeners();
     return this.#buildExtendedList(primaryGroup);
   }
 
@@ -227,7 +254,7 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── getActiveBudgets ─────────────────────────────────────────────────────
 
-  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', target: NaiveDate): ExtendedBudget[] {
+  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', target: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[] {
     if (this.#tree === null) return [];
 
     // Custom budgets: filter tree for overlaps, then return only custom type
@@ -271,6 +298,7 @@ class BudgetFacadeImpl implements BudgetFacade {
 
     const changedIds = new Set<string>([budget.id, ...affectedIds(preview.allViolations)]);
     this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
+    this.#updateCacheAndNotifyListeners();
     return this.#success(preview.allViolations, changedIds);
   }
 
@@ -362,6 +390,7 @@ class BudgetFacadeImpl implements BudgetFacade {
     // Always include the updated budget AND its direct parent so constraint
     // state is refreshed even when no violations are present.
     const changedIds = this.#getAffectedIds(id, preview.updated.account, preview.allViolations);
+    this.#updateCacheAndNotifyListeners();
     return this.#success(preview.allViolations, changedIds);
   }
 
@@ -439,6 +468,7 @@ class BudgetFacadeImpl implements BudgetFacade {
 
     // Do NOT include the removed id in updates.
     changedIds.delete(id);
+    this.#updateCacheAndNotifyListeners();
 
     return this.#success(allViolations, changedIds);
   }

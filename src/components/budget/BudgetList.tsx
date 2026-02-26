@@ -94,12 +94,11 @@ export function BudgetList({
     periodType,
     normalizationMode
 }: BudgetListProps) {
-    "use no memo";
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
     const navigate = useNavigate();
 
-    const { allBudgets: facadeBudgets, facade } = facadeResult;
+    const { allBudgets, facade } = facadeResult;
 
     // Use custom hook for logic
     const { 
@@ -109,10 +108,11 @@ export function BudgetList({
         collapsedIds,
         toggleCollapse
     } = useBudgetList(
-      facadeBudgets,
+      allBudgets,
       viewDate,
       periodType
     );
+    console.groupEnd();
 
     const handleSuccess = () => {
         setIsDialogOpen(false);
@@ -169,8 +169,8 @@ export function BudgetList({
 
 
                         // TODO add back warning/invalid distinction late if necessary
-                        if (facadeBudgets && "id" in budget) {
-                            const facadeBudget = facadeBudgets.find(fb => fb.id === budget.id);
+                        if (allBudgets && "id" in budget) {
+                            const facadeBudget = allBudgets.find(fb => fb.id === budget.id);
                             if (facadeBudget) {
                                 const facadeWarnings = formatViolationWarnings(facadeBudget.warnings);
                                 validationWarnings = [...validationWarnings, ...facadeWarnings];

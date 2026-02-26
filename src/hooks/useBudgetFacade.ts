@@ -13,7 +13,7 @@
  * 3. Add a message formatter in `constraintMessages.ts`.
  */
 
-import { useEffect, useState, useCallback, useContext } from 'react';
+import { useEffect, useState, useCallback, useContext, useSyncExternalStore } from 'react';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
 import type { BudgetFacade, ExtendedBudget } from '../lib/budgets/service/budgetManagerInterface';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
@@ -43,28 +43,29 @@ export const CONSTRAINT_CONFIG: ConstraintConfig = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface UseBudgetFacadeResult {
-  /** All budgets known to the facade, with constraint warnings attached. */
   allBudgets: ExtendedBudget[];
-  /** True while the initial fetch is in flight. */
   isLoading: boolean;
-  /** Non-null if the fetch failed. */
   error: Error | null;
-  /** The facade instance — call `addBudget`, `updateBudget`, `removeBudget`
-   *  directly on it and then call `refresh` to re-sync state. */
   facade: BudgetFacade;
-  /** Re-fetches raw budgets from the API and re-initializes the facade. */
   refresh: () => Promise<void>;
 }
 
 export function useBudgetFacade(): UseBudgetFacadeResult {
   const budgetFacade = useContext(BudgetManagerContext);
 
-  const [allBudgets, setAllBudgets] = useState<ExtendedBudget[]>([]);
+  if (!budgetFacade) {
+    throw new Error("useBudgetFacade must be used within a BudgetManagerContext Provider");
+  }
+
+  // 1. ✨ MAGIC HAPPENS HERE ✨
+  // We replace useState with useSyncExternalStore. 
+  // Now, `allBudgets` is always perfectly in sync with the facade's internal state.
+  const allBudgets = useSyncExternalStore(
+    budgetFacade.subscribe,
+    budgetFacade.getBudgetsSnapshot
+  );
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -73,17 +74,11 @@ export function useBudgetFacade(): UseBudgetFacadeResult {
     setError(null);
     try {
       const { data } = await getBudgets({ query: {} });
-      // The API returns BudgetAllocation[] which is a superset of
-      // StandardBudgetOutput[]; we only feed standard budgets to the facade.
+      
       const raw: StandardBudgetOutput[] = (data ?? []).filter(
         (b): b is StandardBudgetOutput => 'frequency' in b,
       );
 
-      // Deduplicate: the API may return historical revisions (multiple entries
-      // per account with matching or null end_dates). Keep only the most
-      // recently-started budget per account so the tree doesn't see overlapping
-      // instances for the same node.
-      // TODO harmonize backend budget representation and this ones
       const latestByAccount = new Map<string, StandardBudgetOutput>();
       for (const b of raw) {
         const existing = latestByAccount.get(b.account);
@@ -93,8 +88,13 @@ export function useBudgetFacade(): UseBudgetFacadeResult {
       }
       const dedupedRaw = [...latestByAccount.values()];
 
-      const extended = budgetFacade.initializeBudgets(dedupedRaw, CONSTRAINT_CONFIG);
-      setAllBudgets(extended);
+      // 2. We no longer set local state here. 
+      // We just tell the facade to initialize itself. 
+      // Inside `initializeBudgets`, the facade will update its internal tree, 
+      // generate a new snapshot, and notify listeners. 
+      // `useSyncExternalStore` catches that notification and updates the UI automatically!
+      budgetFacade.initializeBudgets(dedupedRaw, CONSTRAINT_CONFIG);
+      
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error fetching budgets'));
     } finally {

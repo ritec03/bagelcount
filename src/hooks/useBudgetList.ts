@@ -38,7 +38,7 @@ export function useBudgetList(
 
     // Filter budgets based on normalization mode using shared utility
     const facade = useContext(BudgetManagerContext);
-    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate));
+    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate), facadeBudgets);
     // Calculate spent amounts using custom hook
     const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);
 
