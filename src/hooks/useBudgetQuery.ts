@@ -13,7 +13,7 @@
  * 3. Add a message formatter in `constraintMessages.ts`.
  */
 
-import { useEffect, useContext, useCallback } from 'react';
+import { useEffect, useContext, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
@@ -50,59 +50,51 @@ export interface UseBudgetQueryResult {
   refresh: () => Promise<void>;
 }
 
-export function useBudgetQuery(): UseBudgetQueryResult {
-  const budgetFacade = useContext(BudgetManagerContext);
-
-  if (!budgetFacade) {
-    throw new Error("useBudgetFacade must be used within a BudgetManagerContext Provider");
-  }
-
-  const updateBudgetList = useAppStore(state => state.updateBudgetList);
-
-  // Sync facade changes to the Zustand store
-  useEffect(() => {
-    return budgetFacade.subscribe(() => {
-      updateBudgetList(budgetFacade.getBudgetsSnapshot());
-    });
-  }, [budgetFacade, updateBudgetList]);
-
-  // Use TanStack Query to manage the API call
-  const { data, isLoading, error, refetch } = useQuery({
+export function useBudgetQueryBasic() {
+  return useQuery({
     queryKey: ['budgets'],
     queryFn: async () => {
       const { data } = await getBudgets({ query: {} });
       return data;
     },
   });
+}
 
+export function useBudgetQuery() {
+  const budgetFacade = useContext(BudgetManagerContext);
+  const updateBudgetList = useAppStore(state => state.updateBudgetList);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  const { data, isLoading, error } = useBudgetQueryBasic();
+
+  // Sync facade changes to Zustand
   useEffect(() => {
-    if (data) {
-      const raw: StandardBudgetOutput[] = data.filter(
-        (b): b is StandardBudgetOutput => 'frequency' in b,
-      );
+    return budgetFacade.subscribe(() => {
+      updateBudgetList(budgetFacade.getBudgetsSnapshot());
+    });
+  }, [budgetFacade, updateBudgetList]);
 
-      const latestByAccount = new Map<string, StandardBudgetOutput>();
-      for (const b of raw) {
-        const existing = latestByAccount.get(b.account);
-        if (!existing || b.start_date > existing.start_date) {
-          latestByAccount.set(b.account, b);
-        }
+  // Process and initialize facade
+  useEffect(() => {
+    if (!data) return;
+
+    const raw = data.filter((b): b is StandardBudgetOutput => 'frequency' in b);
+
+    const latestByAccount = new Map<string, StandardBudgetOutput>();
+    for (const b of raw) {
+      const existing = latestByAccount.get(b.account);
+      if (!existing || b.start_date > existing.start_date) {
+        latestByAccount.set(b.account, b);
       }
-      const dedupedRaw = [...latestByAccount.values()];
-
-      // Initialize the facade, which updates its internal tree and triggers
-      // listeners, causing the store subscription to update Zustand.
-      budgetFacade.initializeBudgets(dedupedRaw, CONSTRAINT_CONFIG);
     }
+
+    budgetFacade.initializeBudgets([...latestByAccount.values()], CONSTRAINT_CONFIG);
+    console.log(budgetFacade.getBudgetsSnapshot());
+    queueMicrotask(() => setIsInitialized(true));
   }, [data, budgetFacade]);
 
-  const refresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
-
   return {
-    isLoading,
+    isLoading: isLoading || !isInitialized,
     error,
-    refresh,
   };
 }
