@@ -4,9 +4,9 @@ import type { BudgetAllocation, StandardBudgetOutput } from '../lib/models/types
 import type { Transaction } from '../lib/api/types.gen';
 import { useBudgetSunburstData } from './useBudgetSunburstData';
 import { createBudgetFacade } from '../lib/budgets/service/budgetManager';
-import type { UseBudgetFacadeResult } from './useBudgetFacade';
+import type { UseBudgetQueryResult } from './useBudgetQuery';
 
-function createMockFacadeResult(budgets: BudgetAllocation[]): UseBudgetFacadeResult {
+function createMockFacadeResult(budgets: BudgetAllocation[]): UseBudgetQueryResult {
   const facade = createBudgetFacade();
   
   const standardBudgets: StandardBudgetOutput[] = budgets.map((b, i) => {

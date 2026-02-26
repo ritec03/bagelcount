@@ -152,6 +152,8 @@ class BudgetFacadeImpl implements BudgetFacade {
     ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
   };
 
+  // TODO remove state and listeners from budget facade
+
   // Create a Set to hold listener callbacks
   #listeners = new Set<() => void>();
   #snapshotCache: ExtendedBudget[] = [];

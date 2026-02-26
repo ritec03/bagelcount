@@ -13,12 +13,13 @@
  * 3. Add a message formatter in `constraintMessages.ts`.
  */
 
-import { useEffect, useState, useCallback, useContext, useSyncExternalStore } from 'react';
+import { useEffect, useContext, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
-import type { BudgetFacade, ExtendedBudget } from '../lib/budgets/service/budgetManagerInterface';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
 import type { StandardBudgetOutput } from '../lib/models/types';
 import { BudgetManagerContext } from '@/components/context';
+import { useAppStore } from './store';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constraint configuration (hardcoded; extend here as new constraints arrive)
@@ -43,39 +44,40 @@ export const CONSTRAINT_CONFIG: ConstraintConfig = {
   },
 };
 
-export interface UseBudgetFacadeResult {
-  allBudgets: ExtendedBudget[];
+export interface UseBudgetQueryResult {
   isLoading: boolean;
   error: Error | null;
-  facade: BudgetFacade;
   refresh: () => Promise<void>;
 }
 
-export function useBudgetFacade(): UseBudgetFacadeResult {
+export function useBudgetQuery(): UseBudgetQueryResult {
   const budgetFacade = useContext(BudgetManagerContext);
 
   if (!budgetFacade) {
     throw new Error("useBudgetFacade must be used within a BudgetManagerContext Provider");
   }
 
-  // 1. ✨ MAGIC HAPPENS HERE ✨
-  // We replace useState with useSyncExternalStore. 
-  // Now, `allBudgets` is always perfectly in sync with the facade's internal state.
-  const allBudgets = useSyncExternalStore(
-    budgetFacade.subscribe,
-    budgetFacade.getBudgetsSnapshot
-  );
+  const updateBudgetList = useAppStore(state => state.updateBudgetList);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  // Sync facade changes to the Zustand store
+  useEffect(() => {
+    return budgetFacade.subscribe(() => {
+      updateBudgetList(budgetFacade.getBudgetsSnapshot());
+    });
+  }, [budgetFacade, updateBudgetList]);
 
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
+  // Use TanStack Query to manage the API call
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['budgets'],
+    queryFn: async () => {
       const { data } = await getBudgets({ query: {} });
-      
-      const raw: StandardBudgetOutput[] = (data ?? []).filter(
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (data) {
+      const raw: StandardBudgetOutput[] = data.filter(
         (b): b is StandardBudgetOutput => 'frequency' in b,
       );
 
@@ -88,29 +90,19 @@ export function useBudgetFacade(): UseBudgetFacadeResult {
       }
       const dedupedRaw = [...latestByAccount.values()];
 
-      // 2. We no longer set local state here. 
-      // We just tell the facade to initialize itself. 
-      // Inside `initializeBudgets`, the facade will update its internal tree, 
-      // generate a new snapshot, and notify listeners. 
-      // `useSyncExternalStore` catches that notification and updates the UI automatically!
+      // Initialize the facade, which updates its internal tree and triggers
+      // listeners, causing the store subscription to update Zustand.
       budgetFacade.initializeBudgets(dedupedRaw, CONSTRAINT_CONFIG);
-      
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error fetching budgets'));
-    } finally {
-      setIsLoading(false);
     }
-  }, [budgetFacade]);
+  }, [data, budgetFacade]);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   return {
-    allBudgets,
     isLoading,
     error,
-    facade: budgetFacade,
     refresh,
   };
 }

@@ -6,7 +6,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/utils";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
-import type { BudgetFacade } from '@/lib/budgets/service/budgetManagerInterface';
+import { useContext } from "react";
+import { BudgetManagerContext } from "../context";
 
 /**
  * Props for the BudgetCard component.
@@ -36,8 +37,6 @@ export interface BudgetCardProps {
     isExpanded?: boolean;
     /** Handler to toggle group expansion */
     onToggle?: () => void;
-    /** Budget facade used for live computation */
-    facade: BudgetFacade;
 }
 
 /**
@@ -63,10 +62,11 @@ export function BudgetCard({
     isGroup,
     isExpanded,
     onToggle,
-    facade
 }: BudgetCardProps) {
     const isStandard = "frequency" in budget;
     let budgetAmount = parseFloat(budget.amount);
+
+    const facade = useContext(BudgetManagerContext);
     
     // Apply normalization if standard budget and pro-rated mode
     if (isStandard && normalizationMode === 'pro-rated' && facade) {

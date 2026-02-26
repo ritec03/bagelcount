@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useTransactions } from './useTransactions';
+import { useTransactions } from './useTransactionsQuery';
 import { calculatePeriodSpent } from '../lib/budgetCalculations';
 import type { BudgetAllocation, PeriodType } from '../lib/models/types';
 

@@ -11,8 +11,9 @@ import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
 import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/models/types';
-import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
+import { useBudgetQuery } from "../../hooks/useBudgetQuery";
 import { formatViolationWarnings } from "../../lib/budgets/constraints/constraintMessages";
+import { useAppStore, type AppState } from "@/hooks/store";
 // import { useContext } from 'react';
 
 // The "Beancount Safe" Approach
@@ -44,10 +45,6 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
 }
 
 interface BudgetListProps {
-    // budgets: BudgetAllocation[];
-    facadeResult: UseBudgetFacadeResult;
-    // isLoading: boolean;
-    // onBudgetChange: () => void;
     viewDate: Date;
     periodType: PeriodType;
     normalizationMode: NormalizationMode;
@@ -89,7 +86,6 @@ function EmptyState() {
 }
 
 export function BudgetList({ 
-    facadeResult,
     viewDate,
     periodType,
     normalizationMode
@@ -98,7 +94,8 @@ export function BudgetList({
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
     const navigate = useNavigate();
 
-    const { allBudgets, facade } = facadeResult;
+    const allBudgets = useAppStore((state: AppState) => state.budgetList)
+    const { isLoading } = useBudgetQuery();
 
     // Use custom hook for logic
     const { 
@@ -114,11 +111,6 @@ export function BudgetList({
     );
     console.groupEnd();
 
-    const handleSuccess = () => {
-        setIsDialogOpen(false);
-        setEditingBudget(null);
-        facadeResult.refresh();
-    };
 
     const openCreate = () => {
         setEditingBudget(null);
@@ -139,7 +131,7 @@ export function BudgetList({
                 </Button>
             </div>
 
-            {facadeResult.isLoading ? (
+            {isLoading ? (
                 <BudgetListSkeleton />
             ) : filteredBudgets.length === 0 ? (
                 <EmptyState />
@@ -195,7 +187,6 @@ export function BudgetList({
                                     isGroup={item.isGroup}
                                     isExpanded={isExpanded}
                                     onToggle={() => toggleCollapse(item.fullPath)}
-                                    facade={facade}
                                     />
                             </div>
                         );
@@ -212,9 +203,7 @@ export function BudgetList({
                         </DialogTitle>
                     </DialogHeader>
                     <BudgetForm 
-                        onSuccess={handleSuccess} 
                         initialData={editingBudget}
-                        facadeResult={facadeResult}
                     />
                 </DialogContent>
             </Dialog>

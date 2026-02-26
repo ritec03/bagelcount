@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import type { PeriodType, NormalizationMode, StandardBudgetOutput } from '@/lib/models/types';
 import {
   calculatePeriodSpent,
@@ -8,7 +8,7 @@ import { NaiveDate } from '@/lib/utils/dateUtil';
 import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetUiTree';
 import { generateVibrantColor } from '@/lib/utils/colorUtils';
 import type { Transaction } from '../lib/api/types.gen';
-import type { UseBudgetFacadeResult } from './useBudgetFacade';
+import { BudgetManagerContext } from '@/components/context';
 
 // Sunburst Chart Node Types - Discriminated Union
 
@@ -200,7 +200,6 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
  * 3. Format with colors for visualization
  */
 export function useBudgetSunburstData(
-  facadeResult: UseBudgetFacadeResult,
   transactions: Transaction[],
   viewDate: Date,
   periodType: PeriodType,
@@ -209,10 +208,11 @@ export function useBudgetSunburstData(
   data: CategoryNode;
   isLoading: boolean;
 } {
+  const facade = useContext(BudgetManagerContext);
   const data = useMemo(() => {
     // Filter to standard budgets only
     // Use shared filtering utility attached to the facade 
-    const filteredBudgets = facadeResult.facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate));
+    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate), []);
 
     // Normalize budget amounts based on view and mode and strip warnings
     // for building the standard tree
@@ -247,7 +247,7 @@ export function useBudgetSunburstData(
     const { node: enrichedTree } = enrichWithSpending(rawTree, spentAmounts);
     return formatForSunburst(enrichedTree);
 
-  }, [facadeResult.facade, transactions, viewDate, periodType, normalizationMode]);
+  }, [facade, transactions, viewDate, periodType, normalizationMode]);
 
   return {
     data,

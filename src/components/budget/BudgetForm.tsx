@@ -7,7 +7,6 @@ import type { BudgetSubmission } from "../../lib/models/types";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useBudgetValidation } from "../../hooks/useBudgetValidation";
-import type { UseBudgetFacadeResult } from "../../hooks/useBudgetFacade";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -43,6 +42,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils/utils";
 import { budgetSchema, type BudgetFormValues } from "@/lib/models/schemas";
+import { useAppStore, type AppState } from "@/hooks/store";
 
 // Type-safe mapper for initialData
 function mapInitialDataToFormValues(
@@ -84,12 +84,10 @@ function mapInitialDataToFormValues(
 }
 
 interface BudgetFormProps {
-  onSuccess?: () => void;
   initialData?: BudgetSubmission | null;
-  facadeResult: UseBudgetFacadeResult;
 }
 
-export function BudgetForm({ onSuccess, initialData, facadeResult }: BudgetFormProps) {
+export function BudgetForm({ initialData }: BudgetFormProps) {
   const defaultValues = mapInitialDataToFormValues(initialData);
   const initialType = defaultValues.type || "StandardBudget";
 
@@ -114,7 +112,7 @@ export function BudgetForm({ onSuccess, initialData, facadeResult }: BudgetFormP
   };
 
   // Retrieve current budgets
-  const { allBudgets } = facadeResult;
+  const allBudgets = useAppStore((state: AppState) => state.budgetList)
   // Watch form fields for real-time validation
   // eslint-disable-next-line react-hooks/incompatible-library -- watch() from react-hook-form cannot be memoized, this is expected behavior
   const watchedAccount = watch("account");
@@ -179,7 +177,6 @@ export function BudgetForm({ onSuccess, initialData, facadeResult }: BudgetFormP
       // API Call
       await createBudget({ body: payload });
       
-      if (onSuccess) onSuccess();
       
     } catch (err) {
       console.error(err);
