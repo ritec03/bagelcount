@@ -4,8 +4,13 @@ import { BudgetDashboard } from './views/BudgetDashboard'
 import { TransactionsPage } from './views/TransactionsPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient();
-
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 10 * 1000, // 10 seconds
+    },
+  },
+});
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
