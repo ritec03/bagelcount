@@ -5,6 +5,7 @@ import type { PeriodType } from '@/lib/models/types';
 import { NaiveDate } from '@/lib/utils/dateUtil';
 import { BudgetManagerContext } from "@/components/context";
 import type { ExtendedBudget } from "@/lib/budgets/service/budgetManagerInterface";
+import { useAppStore, type AppState } from "./store";
 
 /**
  * Custom hook to manage the logic for the BudgetList component.
@@ -20,9 +21,9 @@ import type { ExtendedBudget } from "@/lib/budgets/service/budgetManagerInterfac
  */
 export function useBudgetList(
     facadeBudgets: ExtendedBudget[],
-    viewDate: Date,
     periodType: PeriodType
 ) {
+    const viewDate = useAppStore((state: AppState) => state.viewDate)
     // State for collapsed groups (using fullPath)
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
 

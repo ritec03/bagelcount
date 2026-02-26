@@ -7,7 +7,6 @@ import type { PeriodType } from "@/lib/models/types";
 export function BudgetDashboard() {
     
     // Budget Period State
-    const [viewDate, setViewDate] = useState<Date>(new Date());
     const [periodType, setPeriodType] = useState<PeriodType>('monthly');
     const [normalizationMode, setNormalizationMode] = useState<'pro-rated' | 'full'>('pro-rated');
 
@@ -20,8 +19,6 @@ export function BudgetDashboard() {
 
             {/* Period Controls */}
             <BudgetPeriodControls 
-                viewDate={viewDate}
-                onDateChange={setViewDate}
                 periodType={periodType}
                 onPeriodChange={setPeriodType}
                 normalizationMode={normalizationMode}
@@ -32,7 +29,6 @@ export function BudgetDashboard() {
                 {/* Visualization Column (Dominant) */}
                 <div className="lg:col-span-2 space-y-4">
                     <BudgetSunburst 
-                        viewDate={viewDate}
                         periodType={periodType}
                         normalizationMode={normalizationMode}
                     />
@@ -42,7 +38,6 @@ export function BudgetDashboard() {
                 {/* List & Edit Column */}
                 <div className="lg:col-span-1">
                     <BudgetList 
-                        viewDate={viewDate}
                         periodType={periodType}
                         normalizationMode={normalizationMode}
                     />

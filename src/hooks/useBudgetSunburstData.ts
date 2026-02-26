@@ -10,6 +10,7 @@ import { generateVibrantColor } from '@/lib/utils/colorUtils';
 import { BudgetManagerContext } from '@/components/context';
 import { useTransactions } from './useTransactionsQuery';
 import { useBudgetQuery } from './useBudgetQuery';
+import { useAppStore, type AppState } from './store';
 
 // Sunburst Chart Node Types - Discriminated Union
 
@@ -201,7 +202,6 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
  * 3. Format with colors for visualization
  */
 export function useBudgetSunburstData(
-  viewDate: Date,
   periodType: PeriodType,
   normalizationMode: NormalizationMode
 ): {
@@ -209,6 +209,8 @@ export function useBudgetSunburstData(
   isLoading: boolean;
 } {
   const facade = useContext(BudgetManagerContext);
+  const viewDate = useAppStore((state: AppState) => state.viewDate)
+  
   const { transactions, isLoading } = useTransactions() 
   const { isLoading: isLoadingBudgets } = useBudgetQuery();
   const data = useMemo(() => {

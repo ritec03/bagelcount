@@ -3,10 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Calculator, Calendar } from "lucide-react";
 import type { PeriodType, NormalizationMode } from '@/lib/models/types';
+import { useAppStore, type AppState } from "@/hooks/store";
 
 interface BudgetPeriodControlsProps {
-  viewDate: Date;
-  onDateChange: (date: Date) => void;
   periodType: PeriodType;
   onPeriodChange: (type: PeriodType) => void;
   normalizationMode: NormalizationMode;
@@ -14,13 +13,13 @@ interface BudgetPeriodControlsProps {
 }
 
 export function BudgetPeriodControls({
-  viewDate,
-  onDateChange,
   periodType,
   onPeriodChange,
   normalizationMode,
   onNormalizationChange
 }: BudgetPeriodControlsProps) {
+  const viewDate = useAppStore((state: AppState) => state.viewDate)
+  const onDateChange = useAppStore((state: AppState) => state.setViewDate)
   
   const handlePrevious = () => {
     const newDate = new Date(viewDate);

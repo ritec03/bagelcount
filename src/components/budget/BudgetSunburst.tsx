@@ -44,19 +44,16 @@ function BudgetTooltip({ node }: BudgetTooltipProps) {
 // ============================================================================
 
 interface BudgetSunburstProps {
-  viewDate: Date;
   periodType: PeriodType;
   normalizationMode: 'pro-rated' | 'full';
 }
 
 export function BudgetSunburst({ 
-  viewDate,
   periodType,
   normalizationMode
 }: BudgetSunburstProps) {
   // Use the hook to get processed data
   const { data, isLoading } = useBudgetSunburstData(
-    viewDate, 
     periodType, 
     normalizationMode
   );

@@ -45,7 +45,6 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
 }
 
 interface BudgetListProps {
-    viewDate: Date;
     periodType: PeriodType;
     normalizationMode: NormalizationMode;
 }
@@ -86,7 +85,6 @@ function EmptyState() {
 }
 
 export function BudgetList({ 
-    viewDate,
     periodType,
     normalizationMode
 }: BudgetListProps) {
@@ -95,6 +93,8 @@ export function BudgetList({
     const navigate = useNavigate();
 
     const allBudgets = useAppStore((state: AppState) => state.budgetList)
+    const viewDate = useAppStore((state: AppState) => state.viewDate)
+
     const { isLoading } = useBudgetQuery();
 
     // Use custom hook for logic
@@ -106,7 +106,6 @@ export function BudgetList({
         toggleCollapse
     } = useBudgetList(
       allBudgets,
-      viewDate,
       periodType
     );
     console.groupEnd();
