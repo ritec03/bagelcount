@@ -7,8 +7,9 @@ import {
 import { NaiveDate } from '@/lib/utils/dateUtil';
 import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetUiTree';
 import { generateVibrantColor } from '@/lib/utils/colorUtils';
-import type { Transaction } from '../lib/api/types.gen';
 import { BudgetManagerContext } from '@/components/context';
+import { useTransactions } from './useTransactionsQuery';
+import { useBudgetQuery } from './useBudgetQuery';
 
 // Sunburst Chart Node Types - Discriminated Union
 
@@ -200,7 +201,6 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
  * 3. Format with colors for visualization
  */
 export function useBudgetSunburstData(
-  transactions: Transaction[],
   viewDate: Date,
   periodType: PeriodType,
   normalizationMode: NormalizationMode
@@ -209,6 +209,8 @@ export function useBudgetSunburstData(
   isLoading: boolean;
 } {
   const facade = useContext(BudgetManagerContext);
+  const { transactions, isLoading } = useTransactions() 
+  const { isLoading: isLoadingBudgets } = useBudgetQuery();
   const data = useMemo(() => {
     // Filter to standard budgets only
     // Use shared filtering utility attached to the facade 
@@ -251,6 +253,6 @@ export function useBudgetSunburstData(
 
   return {
     data,
-    isLoading: false
+    isLoading: isLoading || isLoadingBudgets,
   };
 }

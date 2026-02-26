@@ -2,11 +2,9 @@ import { useState } from "react";
 import { BudgetList } from "../components/budget/BudgetList";
 import { BudgetSunburst } from "../components/budget/BudgetSunburst";
 import { BudgetPeriodControls } from "../components/budget/BudgetPeriodControls";
-import { useTransactions } from "../hooks/useTransactionsQuery";
 import type { PeriodType } from "@/lib/models/types";
 
 export function BudgetDashboard() {
-    const { transactions, isLoading: isTxLoading } = useTransactions();
     
     // Budget Period State
     const [viewDate, setViewDate] = useState<Date>(new Date());
@@ -34,8 +32,6 @@ export function BudgetDashboard() {
                 {/* Visualization Column (Dominant) */}
                 <div className="lg:col-span-2 space-y-4">
                     <BudgetSunburst 
-                        transactions={transactions}
-                        isLoading={isTxLoading} 
                         viewDate={viewDate}
                         periodType={periodType}
                         normalizationMode={normalizationMode}

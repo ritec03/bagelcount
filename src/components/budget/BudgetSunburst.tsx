@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { ResponsiveSunburst } from '@nivo/sunburst';
 import { useBudgetSunburstData, type SunburstNode } from '../../hooks/useBudgetSunburstData';
 import type { PeriodType } from '../../lib/models/types';
-import type { Transaction } from '../../lib/api/types.gen';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, type AppState } from '@/hooks/store';
@@ -45,29 +44,22 @@ function BudgetTooltip({ node }: BudgetTooltipProps) {
 // ============================================================================
 
 interface BudgetSunburstProps {
-  transactions: Transaction[];
-  isLoading?: boolean;
   viewDate: Date;
   periodType: PeriodType;
   normalizationMode: 'pro-rated' | 'full';
 }
 
 export function BudgetSunburst({ 
-  transactions,
-  isLoading: externalLoading = false,
   viewDate,
   periodType,
   normalizationMode
 }: BudgetSunburstProps) {
   // Use the hook to get processed data
-  const { data, isLoading: dataLoading } = useBudgetSunburstData(
-    transactions, 
+  const { data, isLoading } = useBudgetSunburstData(
     viewDate, 
     periodType, 
     normalizationMode
   );
-
-  const isLoading = externalLoading || dataLoading;
 
   // If no budgets have been created, show empty state
   const allBudgets = useAppStore((state: AppState) => state.budgetList)
