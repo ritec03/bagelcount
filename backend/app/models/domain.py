@@ -40,6 +40,7 @@ class StandardBudget(BaseBudget):
     frequency: Literal["monthly", "quarterly", "yearly"]
     end_date: date | None = None
 
+
 class CustomBudget(BaseBudget):
     end_date: date
 

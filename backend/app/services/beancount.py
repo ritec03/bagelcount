@@ -18,7 +18,6 @@ from beancount.core.data import Transaction, Amount, Custom
 from beancount.core import account
 from beancount.parser import printer
 from pydantic import ValidationError
-import hashlib
 import os
 import time
 from decimal import Decimal
