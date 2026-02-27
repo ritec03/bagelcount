@@ -16,33 +16,9 @@
 import { useEffect, useContext, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
-import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
 import type { BudgetAllocation, StandardBudgetOutput } from '../lib/models/types';
-import { BudgetManagerContext } from '@/components/context';
+import { BudgetManagerContext, ConstraintConfigContext } from '@/components/context';
 import { useAppStore } from './store';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Constraint configuration (hardcoded; extend here as new constraints arrive)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Hardcoded constraint configuration.
- *
- * `ParentChildrenSum`:
- *   - `parent`: when the sum of children exceeds the parent budget →
- *     warning on the parent (non-blocking; surface visually but don't block).
- *   - `child`:  when a child's amount exceeds the parent budget →
- *     warning on the child (non-blocking).
- *
- * Change either value to `'blocking'` to prevent the mutation from committing
- * when the constraint is violated.
- */
-export const CONSTRAINT_CONFIG: ConstraintConfig = {
-  ParentChildrenSum: {
-    parent: 'warning',
-    child: 'warning',
-  },
-};
 
 export interface UseBudgetQueryResult {
   isLoading: boolean;
@@ -72,6 +48,7 @@ export function useBudgetQueryBasic(filters: {
 
 export function useBudgetQuery() {
   const budgetFacade = useContext(BudgetManagerContext);
+  const CONSTRAINT_CONFIG = useContext(ConstraintConfigContext);
   const updateBudgetList = useAppStore(state => state.updateBudgetList);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -101,7 +78,7 @@ export function useBudgetQuery() {
     budgetFacade.initializeBudgets([...latestByAccount.values()], CONSTRAINT_CONFIG);
     console.log(budgetFacade.getBudgetsSnapshot());
     queueMicrotask(() => setIsInitialized(true));
-  }, [data, budgetFacade]);
+  }, [data, budgetFacade, CONSTRAINT_CONFIG]);
 
   return {
     isLoading: isLoading || !isInitialized,

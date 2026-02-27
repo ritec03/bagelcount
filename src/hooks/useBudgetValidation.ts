@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import type { StandardBudgetOutput } from "../lib/models/types";
-import { createBudgetFacade } from "../lib/budgets/service/budgetManager";
-import { CONSTRAINT_CONFIG } from "./useBudgetQuery";
 import { formatMutationResult } from "../lib/budgets/constraints/constraintMessages";
 import { normalizeBudgetAmount } from "../lib/budgetCalculations";
+import { BudgetManagerContext } from "@/components/context";
 
 export interface AffectedChild {
   account: string;
@@ -48,13 +47,7 @@ export function useBudgetValidation(
   startDate?: string,
   budgetToEditId?: string,
 ): ValidationResult {
-  // Step 1: build a stable facade keyed on the budgets themselves
-  const facade = useMemo(() => {
-    if (!budgets || budgets.length === 0) return null;
-    const f = createBudgetFacade();
-    f.initializeBudgets(budgets, CONSTRAINT_CONFIG);
-    return f;
-  }, [budgets]);
+  const facade = useContext(BudgetManagerContext);
 
   // Step 2: run the preview whenever any form input changes
   return useMemo(() => {
