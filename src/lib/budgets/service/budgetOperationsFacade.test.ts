@@ -441,34 +441,34 @@ describe('BudgetFacade.getActiveBudgets', () => {
   describe('Date Overlap Logic', () => {
     it('should exclude budgets starting in the future', () => {
       // Asking for monthly budgets on Jan 1 2024.
-      const result = facade.getActiveBudgets('monthly', jan1);
+      const result = facade.getActiveBudgets('monthly', jan1, []);
       const ids = result.map(r => r.id);
       expect(ids).toContain('test-id-1');
       expect(ids).not.toContain('test-id-2');
     });
 
     it('should include budgets starting on the exact date', () => {
-      const result = facade.getActiveBudgets('monthly', jan1);
+      const result = facade.getActiveBudgets('monthly', jan1, []);
       const ids = result.map(r => r.id);
       expect(ids).toContain('test-id-1');
     });
 
     it('should include budgets started in the past', () => {
-      const result = facade.getActiveBudgets('monthly', jun1);
+      const result = facade.getActiveBudgets('monthly', jun1, []);
       const ids = result.map(r => r.id);
       expect(ids).toContain('test-id-1');
     });
 
     it('should exclude custom budgets that have ended', () => {
       // Project ends Jun 30. Check on Dec 1.
-      const result = facade.getActiveBudgets('custom', dec1);
+      const result = facade.getActiveBudgets('custom', dec1, []);
       const ids = result.map(r => r.id);
       expect(ids).not.toContain('custom-proj');
     });
 
     it('should include custom budgets active on date', () => {
       // Project ends Jun 30. Check on Jun 1.
-      const result = facade.getActiveBudgets('custom', jun1);
+      const result = facade.getActiveBudgets('custom', jun1, []);
       const ids = result.map(r => r.id);
       expect(ids).toContain('custom-proj');
     });
@@ -476,20 +476,20 @@ describe('BudgetFacade.getActiveBudgets', () => {
 
   describe('Period/Type Logic', () => {
     it('should only return custom budgets when type is "custom"', () => {
-      const result = facade.getActiveBudgets('custom', jan1);
+      const result = facade.getActiveBudgets('custom', jan1, []);
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe('custom-proj');
     });
 
     it('should only return monthly budgets when type is "monthly"', () => {
-      const result = facade.getActiveBudgets('monthly', jan1);
+      const result = facade.getActiveBudgets('monthly', jan1, []);
       // We expect 1 because future monthly hasn't started yet
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe('test-id-1');
     });
 
     it('should only return yearly budgets when type is "yearly"', () => {
-      const result = facade.getActiveBudgets('yearly', jan1);
+      const result = facade.getActiveBudgets('yearly', jan1, []);
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe('test-id-3');
     });

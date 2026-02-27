@@ -147,7 +147,7 @@ export function BudgetList() {
                         const isExpanded = !collapsedIds.has(item.fullPath);
                         
                         //  TOOD validationError not used anymore
-                        let validationError = null;
+                        const validationError = null;
                         let validationWarnings: string[] = [];
 
 
