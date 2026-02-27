@@ -33,6 +33,8 @@ import type {
   OperationResult,
   OperationSuccess,
 } from './budgetManagerInterface';
+import type { ABudgetForest } from '../core/budgetForest';
+import { BudgetForest } from '../core/budgetForest';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Factory function (the public entry point)
@@ -146,6 +148,7 @@ function collectAllInstances(
 
 class BudgetFacadeImpl implements BudgetFacade {
   #tree: BudgetTree | null = null;
+  #forest: ABudgetForest | null = null;
   /** id → raw StandardBudgetOutput */
   #rawById: Map<string, StandardBudgetOutput> = new Map();
   #config: ConstraintConfig = {
@@ -190,7 +193,7 @@ class BudgetFacadeImpl implements BudgetFacade {
     this.#rawById = new Map(rawBudgets.map((r) => [r.id, r]));
 
     if (rawBudgets.length === 0) {
-      this.#tree = BudgetTree.createEmpty(makeAccountLabel('__empty__'), config);
+      this.#forest = BudgetForest.createEmpty(config);
       return [];
     }
 
@@ -217,20 +220,20 @@ class BudgetFacadeImpl implements BudgetFacade {
     );
 
     if (primaryGroup.length === 0) {
-      this.#tree = BudgetTree.createEmpty(makeAccountLabel('__empty__'), config);
+      this.#forest = BudgetForest.createEmpty(config);
       return [];
     }
 
-    const rootLabel = makeAccountLabel(primaryGroup[0]!.account.split(':')[0]!);
-    let tree = BudgetTree.createEmpty(rootLabel, config);
+    let forest = BudgetForest.createEmpty(config);
 
     for (const raw of primaryGroup) {
       const label = makeAccountLabel(raw.account);
       const inst  = rawToInstance(raw);
-      tree = tree.insert(label, inst);
+      forest = forest.insertBudget(raw.frequency, label, inst);
     }
 
-    this.#tree = tree;
+    this.#forest = forest;
+
     this.#updateCacheAndNotifyListeners();
     return this.#buildExtendedList(primaryGroup);
   }
