@@ -17,7 +17,7 @@ import { useEffect, useContext, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getBudgetsApiV1BudgetsGet as getBudgets } from '../lib/api/sdk.gen';
 import type { ConstraintConfig } from '../lib/budgets/constraints/constraints';
-import type { StandardBudgetOutput } from '../lib/models/types';
+import type { BudgetAllocation, StandardBudgetOutput } from '../lib/models/types';
 import { BudgetManagerContext } from '@/components/context';
 import { useAppStore } from './store';
 
@@ -50,14 +50,24 @@ export interface UseBudgetQueryResult {
   refresh: () => Promise<void>;
 }
 
-export function useBudgetQueryBasic() {
-  return useQuery({
-    queryKey: ['budgets'],
-    queryFn: async () => {
-      const { data } = await getBudgets({ query: {} });
-      return data;
-    },
-  });
+export function useBudgetQueryBasic(filters: {   
+    date?: string; 
+    startDate?: string;
+    endDate?: string; 
+} = {}) {
+    return useQuery<BudgetAllocation[], Error>({
+        queryKey: ['budgets', 'filtered', filters.date, filters.startDate, filters.endDate],
+        queryFn: async () => {
+            const { data } = await getBudgets({
+                query: {
+                    date: filters.date,
+                    start_date: filters.startDate,
+                    end_date: filters.endDate
+                }
+            });
+            return data ?? [];
+        }
+    });
 }
 
 export function useBudgetQuery() {
