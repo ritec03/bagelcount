@@ -256,6 +256,7 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── getActiveBudgets ─────────────────────────────────────────────────────
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', target: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[] {
     if (this.#tree === null) return [];
 
