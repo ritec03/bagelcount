@@ -142,6 +142,21 @@ function collectAllInstances(
   return result;
 }
 
+const ALL_PERIODS: PeriodType[] = ['monthly', 'quarterly', 'yearly'];
+
+function collectAllInstancesInForest(
+  forest: ABudgetForest,
+): Array<{ instance: BudgetInstance; node: BudgetTreeNode }> {
+  const result: Array<{ instance: BudgetInstance; node: BudgetTreeNode }> = [];
+  for (const period of ALL_PERIODS) {
+    const tree = forest.getTree(period);
+    if (tree !== undefined) {
+      result.push(...collectAllInstances(tree.root));
+    }
+  }
+  return result;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Concrete class
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,15 +256,15 @@ class BudgetFacadeImpl implements BudgetFacade {
   // ── getBudgetList ────────────────────────────────────────────────────────
 
   getBudgetList(range: { start: Date; end: Date }): ExtendedBudget[] {
-    if (this.#tree === null) return [];
+    if (this.#forest === null) return [];
 
     // Convert JS Date → NaiveDate via ISO string slice (YYYY-MM-DD).
     const start = NaiveDate.fromString(range.start.toISOString().slice(0, 10));
     const end   = NaiveDate.fromString(range.end.toISOString().slice(0, 10));
-    const filtered = this.#tree.filter(new DateRange(start, end));
+    const filtered = this.#forest.filter(undefined, new DateRange(start, end));
 
     // Collect ids present in the filtered tree.
-    const entriesInRange = collectAllInstances(filtered.root);
+    const entriesInRange = collectAllInstancesInForest(filtered);
     const visibleIds = new Set(entriesInRange.map((e) => e.instance.id));
 
     // Preserve original insertion order.

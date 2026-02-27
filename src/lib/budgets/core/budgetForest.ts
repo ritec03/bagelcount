@@ -19,7 +19,7 @@ export abstract class ABudgetForest {
   abstract getTree(period: PeriodType): BudgetTree | undefined;
   abstract insertBudget(period: PeriodType, label: AccountLabel, inst: BudgetInstance): ABudgetForest;
   abstract deleteBudget(period: PeriodType, label: AccountLabel, range: DateRange): ABudgetForest;
-  abstract filter(period: PeriodType, range: DateRange): ABudgetForest;
+  abstract filter(period: PeriodType | undefined, range: DateRange): ABudgetForest;
 
   // tentative operations — return new forest + violations without side effects
   abstract tryInsert(period: PeriodType, label: AccountLabel, inst: BudgetInstance): BudgetForestOperationResult;
@@ -85,8 +85,14 @@ export class BudgetForest extends ABudgetForest {
     throw new Error("BudgetForest.deleteBudget: not implemented");
   }
 
-  filter(_period: PeriodType, _range: DateRange): ABudgetForest {
-    throw new Error("BudgetForest.filter: not implemented");
+  filter(period: PeriodType | undefined, range: DateRange): BudgetForest {
+    const nextTrees = new Map<PeriodType, BudgetTree>();
+    for (const [p, tree] of this.#trees) {
+      // If a specific period was requested, only filter that tree;
+      // leave all others untouched.
+      nextTrees.set(p, period === undefined || period === p ? tree.filter(range) : tree);
+    }
+    return new BudgetForest(nextTrees, this.#config);
   }
 
   tryInsert(_period: PeriodType, _label: AccountLabel, _inst: BudgetInstance): BudgetForestOperationResult {
