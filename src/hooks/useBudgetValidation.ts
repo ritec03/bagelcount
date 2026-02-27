@@ -3,6 +3,8 @@ import type { StandardBudgetOutput } from "../lib/models/types";
 import { formatMutationResult } from "../lib/budgets/constraints/constraintMessages";
 import { normalizeBudgetAmount } from "../lib/budgetCalculations";
 import { BudgetManagerContext } from "@/components/context";
+import { iterateViolations } from "@/lib/budgets/constraints/constraints";
+import { useAppStore, type AppState } from "./store";
 
 export interface AffectedChild {
   account: string;
@@ -39,7 +41,6 @@ const EMPTY_RESULT: ValidationResult = {
  * that `BudgetForm` and `useBudgetListValidation` need no UI changes.
  */
 export function useBudgetValidation(
-  budgets: StandardBudgetOutput[] | undefined,
   account: string,
   amount: number,
   budgetType: "StandardBudget" | "CustomBudget",
@@ -48,6 +49,7 @@ export function useBudgetValidation(
   budgetToEditId?: string,
 ): ValidationResult {
   const facade = useContext(BudgetManagerContext);
+  const budgets = useAppStore((state: AppState) => state.budgetList);
 
   // Step 2: run the preview whenever any form input changes
   return useMemo(() => {
@@ -71,9 +73,9 @@ export function useBudgetValidation(
       };
     }
 
-    const dummyId = budgetToEditId ?? "__preview__";
+    const budgetId = budgetToEditId ?? "__preview__";
     const dummyBudget: StandardBudgetOutput = {
-      id: dummyId,
+      id: budgetId,
       account,
       amount: String(amount),
       start_date: startDate ?? new Date().toISOString().slice(0, 10),
@@ -86,13 +88,20 @@ export function useBudgetValidation(
         ? facade.previewUpdateBudget(budgetToEditId, dummyBudget)
         : facade.previewAddBudget(dummyBudget);
 
+      const availableBudget = budgets ? computeAvailableBudget(budgets, account, amount, frequency) : null;
+        
       if (!result.success) {
-        console.log(result)
+        let isValid = true;
+        for (const [_, warning] of iterateViolations(result.errors)) {
+          if (warning.budgetId === budgetId) {
+            isValid = false;
+          }
+        }
+
         const formatted = formatMutationResult(result.errors, result.warnings);
         // Compute availableBudget: best-effort from legacy logic for UX hint
-        const availableBudget = budgets ? computeAvailableBudget(budgets, account, amount, frequency) : null;
         return {
-          isValid: false,
+          isValid: isValid,
           error: formatted.errors[0] ?? "Invalid budget.",
           warnings: formatted.warnings,
           affectedChildren: [],
@@ -101,21 +110,17 @@ export function useBudgetValidation(
       }
 
       // Success but may still have warnings (e.g. over-allocating children)
-      const selfUpdate = result.updates[dummyId];
-      if (selfUpdate?.warnings) {
-        const formatted = formatMutationResult({}, selfUpdate.warnings);
-        if (formatted.warnings.length > 0) {
-          return {
-            isValid: true,
-            error: null,
-            warnings: formatted.warnings,
-            affectedChildren: [],
-            availableBudget: null,
-          };
-        }
-      }
+      const selfUpdate = result.updates[budgetId];
+      const formatted = formatMutationResult({}, selfUpdate.warnings);
 
-      return EMPTY_RESULT;
+      return {
+        isValid: true,
+        error: null,
+        warnings: selfUpdate?.warnings && formatted.warnings.length > 0 ? formatted.warnings : [],
+        affectedChildren: [],
+        availableBudget: availableBudget,
+      };
+
     } catch {
       // ignore transient parsing errors
       return EMPTY_RESULT;

@@ -28,6 +28,8 @@ type ConstraintWarning = {
   message: string;
 }
 
+// TODO potentially rename as there are warnings and errors and this name
+// may confuse.
 export type ParentChildrenSumWarning =
   | (ConstraintWarning & {
       role: "parent";
@@ -58,6 +60,7 @@ export type ConstraintConfig = {
 export type ConstraintViolationMap = {
   [K in Constraint]?: ConstraintRegistry[K]["Warning"][];
 };
+// export type ConstraintViolationMap = Map<Constraint, ConstraintRegistry[Constraint]["Warning"][]>;
 
 /**
  * Type signature of generic verification function that operates on a budget
@@ -71,3 +74,28 @@ export type ConstraintChecker<K extends Constraint> = (
 export type ConstraintCheckerMap = {
   [K in Constraint]: ConstraintChecker<K>;
 };
+
+/**
+ * Helper functions
+ */
+
+// iterate over constraint registry
+export function* iterateViolationEntries(
+  map: ConstraintViolationMap
+): Generator<[Constraint, ConstraintRegistry[Constraint]["Warning"][]]> {
+  for (const key in map) {
+    const k = key as Constraint;
+    const warnings = map[k];
+    if (warnings) yield [k, warnings] as const;
+  }
+}
+
+export function* iterateViolations(
+  map: ConstraintViolationMap
+): Generator<[Constraint, ConstraintRegistry[Constraint]["Warning"]]> {
+  for (const [constraint, warnings] of iterateViolationEntries(map)) {
+    for (const warning of warnings) {
+      yield [constraint, warning] as const;
+    }
+  }
+}
