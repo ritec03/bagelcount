@@ -2,7 +2,7 @@ import { labelEquals, makeAccountLabel } from "./accountLabel";
 import type { AccountLabel } from "./accountLabel";
 import type { BudgetInstance } from "./budgetInstance";
 import { BudgetTree } from "./budgetTree";
-import { mergeViolations, type ConstraintConfig, type ConstraintViolationMap } from "../constraints/constraints";
+import { type ConstraintConfig, type ConstraintViolationMap } from "../constraints/constraints";
 import type { OperationFailure, OperationSuccess } from "../service/budgetManagerInterface";
 import type { PeriodType } from "@/lib/models/types";
 import { DateRange } from "@/lib/utils/dateRange";
@@ -33,6 +33,26 @@ export abstract class ABudgetForest {
   abstract tryDelete(period: PeriodType, label: AccountLabel, range: DateRange): BudgetForestOperationResult;
   abstract validateAll(): ConstraintViolationMap;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Period hierarchy constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Ordered from largest to smallest — used to guarantee correct insertion order. */
+const PERIOD_HIERARCHY: readonly PeriodType[] = ['yearly', 'quarterly', 'monthly'];
+
+/**
+ * The period-chain suffix appended to an account label in the unified tree.
+ *
+ * A monthly budget at `Expenses:Food` becomes `Expenses:Food:yearly:quarterly:monthly`
+ * so that yearly is always an ancestor of quarterly, which is always an ancestor
+ * of monthly, for every account node.
+ */
+const PERIOD_PATH_SUFFIX: Record<PeriodType, readonly PeriodType[]> = {
+  yearly:    ['yearly'],
+  quarterly: ['yearly', 'quarterly'],
+  monthly:   ['yearly', 'quarterly', 'monthly'],
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Concrete implementation
@@ -88,14 +108,10 @@ export class BudgetForest extends ABudgetForest {
 
   filter(period: PeriodType | undefined, range: DateRange): BudgetForest {
     if (period === undefined) {
-        const nextTrees = new Map<PeriodType, BudgetTree>();
-        for (const [p, tree] of this.#trees) {
-            // If a specific period was requested, only filter that tree;
-            // leave all others untouched.
-            if (p === period) {
-                nextTrees.set(p, tree.filter(range));
-            }
-        }
+      const nextTrees = new Map<PeriodType, BudgetTree>();
+      for (const [p, tree] of this.#trees) {
+        nextTrees.set(p, tree.filter(range)); // filter ALL trees
+      }
       return new BudgetForest(nextTrees, this.#config);
     }
     const nextTrees = new Map<PeriodType, BudgetTree>();
@@ -127,19 +143,13 @@ export class BudgetForest extends ABudgetForest {
   }
 
   validateAll(): ConstraintViolationMap {
-    // TODO implement proper forest-level validation
-    let violationsMap: ConstraintViolationMap = {};
-    for(const [_, value] of this.#trees.entries()) {
-      violationsMap = mergeViolations(violationsMap, value.validateTree());
-    }
-    return violationsMap;
+    const unified = this.buildUnifiedTree();
+    return unified ? unified.validateTree() : {};
   }
 
   /**
-   * Get all nodes for account label by period type
-   * Useful for validation - 
-   * @param label 
-   * @returns 
+   * Get all nodes for account label by period type.
+   * Useful for validation.
    */
   getNodesByPeriod(label: AccountLabel): Partial<Record<PeriodType, BudgetTreeNode[]>> {
     const result: Partial<Record<PeriodType, BudgetTreeNode[]>> = {};
@@ -151,6 +161,61 @@ export class BudgetForest extends ABudgetForest {
     }
     return result;
   }
+
+  // TODO: create a method that traverses the tree and adds amounts to ghost nodes
+  // so that all nodes have amounts
+  /**
+   * Build a single {@link BudgetTree} that unifies all period-specific trees.
+   *
+   * Each budget's account path is extended with the period-hierarchy chain so
+   * that higher-frequency periods are children of lower-frequency ones:
+   *
+   * ```
+   * Expenses:Food (yearly)   → Expenses:Food:yearly
+   * Expenses:Food (quarterly) → Expenses:Food:yearly:quarterly
+   * Expenses:Food (monthly)  → Expenses:Food:yearly:quarterly:monthly
+   * ```
+   *
+   * Child accounts follow their own period chain underneath the parent account:
+   *
+   * ```
+   * Expenses:Food:Groceries (monthly)
+   *   → Expenses:Food:Groceries:yearly:quarterly:monthly
+   * ```
+   *
+   * Ghost (linkage) nodes are created automatically by {@link BudgetTree.insert}
+   * for every intermediate segment that has no budget.
+   *
+   * Returns `null` when the forest is empty.
+   */
+  buildUnifiedTree(): BudgetTree | null {
+    // Find the root segment from any existing per-period tree.
+    let rootSegment: string | null = null;
+    for (const period of PERIOD_HIERARCHY) {
+      const tree = this.#trees.get(period);
+      if (tree !== undefined) {
+        rootSegment = tree.root.accountLabel[0];
+        break;
+      }
+    }
+    if (rootSegment === null) return null;
+
+    let unified = BudgetTree.createEmpty(makeAccountLabel(rootSegment), this.#config);
+
+    // Process yearly → quarterly → monthly so that parent period nodes are
+    // always inserted before their child period nodes.
+    for (const period of PERIOD_HIERARCHY) {
+      const tree = this.#trees.get(period);
+      if (tree === undefined) continue;
+
+      for (const { label, inst } of collectBudgetsWithLabels(tree.root)) {
+        const extendedPath = [...label, ...PERIOD_PATH_SUFFIX[period]].join(':');
+        unified = unified.insert(makeAccountLabel(extendedPath), inst);
+      }
+    }
+
+    return unified;
+  }
 }
 
 function findNode(node: BudgetTreeNode, target: AccountLabel): BudgetTreeNode | undefined {
@@ -160,4 +225,21 @@ function findNode(node: BudgetTreeNode, target: AccountLabel): BudgetTreeNode | 
     if (found !== undefined) return found;
   }
   return undefined;
+}
+
+/**
+ * DFS over `node` and all descendants, collecting every `BudgetInstance`
+ * together with the full `AccountLabel` of the node it lives on.
+ */
+function collectBudgetsWithLabels(
+  node: BudgetTreeNode,
+): Array<{ label: AccountLabel; inst: BudgetInstance }> {
+  const result: Array<{ label: AccountLabel; inst: BudgetInstance }> = [];
+  for (const inst of node.budgets) {
+    result.push({ label: node.accountLabel, inst });
+  }
+  for (const child of node.children) {
+    result.push(...collectBudgetsWithLabels(child));
+  }
+  return result;
 }
