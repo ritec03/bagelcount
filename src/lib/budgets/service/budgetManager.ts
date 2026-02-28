@@ -12,8 +12,8 @@
  *              subsequent mutation operations.
  */
 
-import type { PeriodType, StandardBudgetOutput } from '../../models/types';
-import { makeAccountLabel } from '../core/accountLabel';
+import type { BudgetAllocation, BudgetType, CustomBudgetOutput, PeriodType, StandardBudgetOutput } from '../../models/types';
+import { makeAccountLabel, type AccountLabel } from '../core/accountLabel';
 import { BudgetInstance } from '../core/budgetInstance';
 import { BudgetTreeNode } from '../core/budgetNode';
 import { BudgetTree } from '../core/budgetTree';
@@ -23,7 +23,7 @@ import type {
   ConstraintMode,
   ConstraintViolationMap,
 } from '../constraints/constraints';
-import { DateRange } from '../../utils/dateRange';
+import { DateRange, overlap } from '../../utils/dateRange';
 import { NaiveDate } from '../../utils/dateUtil';
 import { normalizeBudgetAmount } from '../../budgetCalculations';
 import type {
@@ -54,7 +54,7 @@ export function createBudgetFacade(): BudgetFacade {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Parse a `StandardBudgetOutput` into a `BudgetInstance` for tree internals. */
-function rawToInstance(raw: StandardBudgetOutput): BudgetInstance {
+function rawToInstance(raw: BudgetAllocation): BudgetInstance {
   const start = NaiveDate.fromString(raw.start_date);
   const end   = raw.end_date !== null ? NaiveDate.fromString(raw.end_date) : null;
   return new BudgetInstance(new DateRange(start, end), parseFloat(raw.amount), raw.id);
@@ -131,10 +131,10 @@ function affectedIds(violations: ConstraintViolationMap): Set<string> {
 /** Walk the entire tree and collect every `BudgetInstance` into a flat array. */
 function collectAllInstances(
   node: BudgetTreeNode,
-): Array<{ instance: BudgetInstance; node: BudgetTreeNode }> {
-  const result: Array<{ instance: BudgetInstance; node: BudgetTreeNode }> = [];
+): Array<BudgetInstance> {
+  const result: Array<BudgetInstance> = [];
   for (const inst of node.budgets) {
-    result.push({ instance: inst, node });
+    result.push(inst);
   }
   for (const child of node.children) {
     result.push(...collectAllInstances(child));
@@ -146,14 +146,15 @@ const ALL_PERIODS: PeriodType[] = ['monthly', 'quarterly', 'yearly'];
 
 function collectAllInstancesInForest(
   forest: ABudgetForest,
-): Array<{ instance: BudgetInstance; node: BudgetTreeNode }> {
-  const result: Array<{ instance: BudgetInstance; node: BudgetTreeNode }> = [];
+): Array<BudgetInstance> {
+  const result: Array<BudgetInstance> = [];
   for (const period of ALL_PERIODS) {
     const tree = forest.getTree(period);
     if (tree !== undefined) {
       result.push(...collectAllInstances(tree.root));
     }
   }
+
   return result;
 }
 
@@ -163,9 +164,10 @@ function collectAllInstancesInForest(
 
 class BudgetFacadeImpl implements BudgetFacade {
   #tree: BudgetTree | null = null;
+  #customBudgets: (BudgetInstance & {accountLabel: AccountLabel})[] = [];
   #forest: ABudgetForest | null = null;
   /** id → raw StandardBudgetOutput */
-  #rawById: Map<string, StandardBudgetOutput> = new Map();
+  #rawById: Map<string, StandardBudgetOutput | CustomBudgetOutput> = new Map();
   #config: ConstraintConfig = {
     ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
   };
@@ -200,8 +202,12 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── initializeBudgets ────────────────────────────────────────────────────
 
+  private isStandardBudget(raw: BudgetAllocation): raw is StandardBudgetOutput {
+    return 'frequency' in raw;
+  }
+
   initializeBudgets(
-    rawBudgets: StandardBudgetOutput[],
+    rawBudgets: BudgetAllocation[],
     config: ConstraintConfig,
   ): ExtendedBudget[] {
     this.#config = config;
@@ -209,6 +215,7 @@ class BudgetFacadeImpl implements BudgetFacade {
 
     if (rawBudgets.length === 0) {
       this.#forest = BudgetForest.createEmpty(config);
+      this.#customBudgets = [];
       return [];
     }
 
@@ -220,7 +227,7 @@ class BudgetFacadeImpl implements BudgetFacade {
     // The tree is rooted at one segment; budgets from different roots need
     // separate trees. For the UI we use only the largest group (Expenses).
     // See TODO below
-    const groups = new Map<string, StandardBudgetOutput[]>();
+    const groups = new Map<string, BudgetAllocation[]>();
     for (const raw of sorted) {
       const root = raw.account.split(':')[0]!;
       if (!groups.has(root)) groups.set(root, []);
@@ -231,11 +238,12 @@ class BudgetFacadeImpl implements BudgetFacade {
     // TODO: support multiple roots if the UI ever needs Income/Assets trees.
     const primaryGroup = [...groups.values()].reduce(
       (best, g) => (g.length > best.length ? g : best),
-      [] as StandardBudgetOutput[],
+      [],
     );
 
     if (primaryGroup.length === 0) {
       this.#forest = BudgetForest.createEmpty(config);
+      this.#customBudgets = [];
       return [];
     }
 
@@ -244,7 +252,11 @@ class BudgetFacadeImpl implements BudgetFacade {
     for (const raw of primaryGroup) {
       const label = makeAccountLabel(raw.account);
       const inst  = rawToInstance(raw);
-      forest = forest.insertBudget(raw.frequency, label, inst);
+      if (this.isStandardBudget(raw)) {
+        forest = forest.insertBudget(raw.frequency, label, inst);
+      } else {
+        this.#customBudgets.push({...inst, accountLabel: makeAccountLabel(raw.account)})
+      }
     }
 
     this.#forest = forest;
@@ -265,7 +277,7 @@ class BudgetFacadeImpl implements BudgetFacade {
 
     // Collect ids present in the filtered tree.
     const entriesInRange = collectAllInstancesInForest(filtered);
-    const visibleIds = new Set(entriesInRange.map((e) => e.instance.id));
+    const visibleIds = new Set(entriesInRange.map((e) => e.id));
 
     // Preserve original insertion order.
     const visibleRaws = [...this.#rawById.values()].filter((r) => visibleIds.has(r.id));
@@ -275,30 +287,29 @@ class BudgetFacadeImpl implements BudgetFacade {
   // ── getActiveBudgets ─────────────────────────────────────────────────────
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', target: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[] {
-    if (this.#tree === null) return [];
+  getActiveBudgets(periodTypeOrCustom: BudgetType, target: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[] {
+    if (this.#forest === null) return [];
+    let visibleIds: Set<string>;
 
-    // Custom budgets: filter tree for overlaps, then return only custom type
     if (periodTypeOrCustom === 'custom') {
-      const filtered = this.#tree.filter(new DateRange(target, target));
-      const visibleIds = new Set(collectAllInstances(filtered.root).map((e) => e.instance.id));
-      
-      const customRaws = [...this.#rawById.values()].filter(
-        (r) => visibleIds.has(r.id) && !('frequency' in r)
-      );
-      return this.#buildExtendedList(customRaws);
+      // filter custom budgets
+      const filteredCustomBudgets = [];
+      for (const budget of this.#customBudgets) {
+        if (overlap(budget.effectiveRange, new DateRange(target, target))) {
+          filteredCustomBudgets.push(budget)
+        }
+      }
+      visibleIds = new Set(filteredCustomBudgets.map((e) => e.id));
+    } else {
+      const filtered = this.#forest.filter(periodTypeOrCustom, new DateRange(target, target));
+      visibleIds = new Set(collectAllInstancesInForest(filtered).map((e) => e.id));
     }
-    
-    // Standard budgets: filter by frequency and start date
-    // Check that it's active on the target date. Standard budgets usually
-    // don't have end dates, but `tree.filter` securely checks the start date.
-    const filtered = this.#tree.filter(new DateRange(target, target));
-    const visibleIds = new Set(collectAllInstances(filtered.root).map((e) => e.instance.id));
 
-    const standardRaws = [...this.#rawById.values()].filter(
-      (r) => visibleIds.has(r.id) && 'frequency' in r && r.frequency === periodTypeOrCustom
+
+    const customRaws = [...this.#rawById.values()].filter(
+      (r) => visibleIds.has(r.id)
     );
-    return this.#buildExtendedList(standardRaws);
+    return this.#buildExtendedList(customRaws);
   }
 
   // ── normalizeAmount ──────────────────────────────────────────────────────
@@ -537,7 +548,7 @@ class BudgetFacadeImpl implements BudgetFacade {
    * Build an `ExtendedBudget[]` for the given raws in order, using the
    * current tree's violation map to attach per-budget warnings.
    */
-  #buildExtendedList(raws: StandardBudgetOutput[]): ExtendedBudget[] {
+  #buildExtendedList(raws: BudgetAllocation[]): ExtendedBudget[] {
     const violations    = this.#tree ? this.#tree.validateTree() : {};
     const warningIndex  = indexWarningsByBudgetId(violations);
 

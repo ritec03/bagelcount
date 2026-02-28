@@ -5,7 +5,7 @@ import { BudgetTree } from "./budgetTree";
 import type { ConstraintConfig, ConstraintViolationMap } from "../constraints/constraints";
 import type { OperationFailure, OperationSuccess } from "../service/budgetManagerInterface";
 import type { PeriodType } from "@/lib/models/types";
-import type { DateRange } from "@/lib/utils/dateRange";
+import { DateRange } from "@/lib/utils/dateRange";
 
 export type BudgetForestOperationResult =
   | ({ forest: ABudgetForest } & OperationSuccess)
@@ -86,11 +86,24 @@ export class BudgetForest extends ABudgetForest {
   }
 
   filter(period: PeriodType | undefined, range: DateRange): BudgetForest {
+    if (period === undefined) {
+        const nextTrees = new Map<PeriodType, BudgetTree>();
+        for (const [p, tree] of this.#trees) {
+            // If a specific period was requested, only filter that tree;
+            // leave all others untouched.
+            if (p === period) {
+                nextTrees.set(p, tree.filter(range));
+            }
+        }
+      return new BudgetForest(nextTrees, this.#config);
+    }
     const nextTrees = new Map<PeriodType, BudgetTree>();
     for (const [p, tree] of this.#trees) {
       // If a specific period was requested, only filter that tree;
       // leave all others untouched.
-      nextTrees.set(p, period === undefined || period === p ? tree.filter(range) : tree);
+      if (p === period) {
+        nextTrees.set(p, tree.filter(range));
+      }
     }
     return new BudgetForest(nextTrees, this.#config);
   }

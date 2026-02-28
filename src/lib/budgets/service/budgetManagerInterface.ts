@@ -6,7 +6,7 @@
  * explaining violated constraints.
  */
 
-import type { PeriodType, StandardBudgetOutput } from "../../models/types";
+import type { BudgetAllocation, BudgetType, PeriodType, StandardBudgetOutput } from "../../models/types";
 import type { ConstraintConfig, ConstraintViolationMap } from "../constraints/constraints";
 import { NaiveDate } from "../../utils/dateUtil";
 
@@ -14,13 +14,11 @@ import { NaiveDate } from "../../utils/dateUtil";
 // Data Structures
 // ==========================================
 
-export interface ExtendedBudget extends StandardBudgetOutput {
+export type ExtendedBudget = BudgetAllocation & {
   id: string;
-  /**
-   * Active warnings for this specific budget.
-   */
-  warnings: ConstraintViolationMap; 
-}
+  // Active warnings for this particular budget.
+  warnings: ConstraintViolationMap;
+};
 
 export interface OperationSuccess {
   success: true;
@@ -62,7 +60,7 @@ export interface BudgetFacade {
    * generate warnings.
    * Converts raw data into "Extended" objects with warnings calculated.
    */
-  initializeBudgets(rawBudgets: StandardBudgetOutput[], config: ConstraintConfig): ExtendedBudget[];
+  initializeBudgets(rawBudgets: BudgetAllocation[], config: ConstraintConfig): ExtendedBudget[];
 
   /**
    * Filter budgets based on the current period type (or 'custom'), and view date.
@@ -74,7 +72,7 @@ export interface BudgetFacade {
    * @param periodTypeOrCustom - The active view mode: 'monthly', 'yearly', or 'custom'
    * @param date - The reference date for overlap checks
    */
-  getActiveBudgets(periodTypeOrCustom: PeriodType | 'custom', date: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[];
+  getActiveBudgets(periodTypeOrCustom: BudgetType, date: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[];
 
   /**
    * Normalizes a budget amount based on its frequency to the target period length.
