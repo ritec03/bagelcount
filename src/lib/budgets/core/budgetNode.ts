@@ -6,27 +6,15 @@ import { sortAndValidate, sortedInsert, type BudgetInstance } from './budgetInst
 // BudgetTreeNode
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * A node in a budget tree, corresponding to a single Beancount account.
- *
- * - `accountLabel` — the full account name as a pre-segmented
- *   {@link AccountLabel} (e.g. `['Expenses', 'Food']`).
- * - `budgets` — **sorted** (by start date), **non-overlapping**
- *   {@link BudgetInstance} array. The constructor enforces both invariants.
- * - `children` — sub-account nodes.
- *
- * The tree does **not** carry frequency / period information; that belongs to
- * the containing budget tree.
- */
-export class BudgetTreeNode {
+export class TreeNode {
   readonly accountLabel: AccountLabel;
   readonly budgets: readonly BudgetInstance[];
-  readonly children: readonly BudgetTreeNode[];
+  readonly children: readonly TreeNode[];
 
   constructor(
     accountLabel: AccountLabel,
     budgets: readonly BudgetInstance[],
-    children: readonly BudgetTreeNode[],
+    children: readonly TreeNode[],
   ) {
     this.accountLabel = accountLabel;
     this.budgets = sortAndValidate(budgets);
@@ -48,7 +36,7 @@ export class BudgetTreeNode {
    * the root result may itself have empty `budgets` and `children` if nothing
    * in the whole tree matched.
    */
-  filter(filterRange: DateRange): BudgetTreeNode {
+  filter(filterRange: DateRange): TreeNode {
     const matchingBudgets = this.budgets.filter(
       (inst) => overlap(inst.effectiveRange, filterRange) !== null,
     );
@@ -57,7 +45,38 @@ export class BudgetTreeNode {
       .map((child) => child.filter(filterRange))
       .filter((child) => child.budgets.length > 0 || child.children.length > 0);
 
-    return new BudgetTreeNode(this.accountLabel, matchingBudgets, matchingChildren);
+    return new TreeNode(this.accountLabel, matchingBudgets, matchingChildren);
+  }
+}
+
+/**
+ * A node in a budget tree, corresponding to a single Beancount account.
+ *
+ * - `accountLabel` — the full account name as a pre-segmented
+ *   {@link AccountLabel} (e.g. `['Expenses', 'Food']`).
+ * - `budgets` — **sorted** (by start date), **non-overlapping**
+ *   {@link BudgetInstance} array. The constructor enforces both invariants.
+ * - `children` — sub-account nodes.
+ *
+ * The tree does **not** carry frequency / period information; that belongs to
+ * the containing budget tree.
+ */
+export class BudgetTreeNode extends TreeNode {
+  constructor(
+    accountLabel: AccountLabel,
+    budgets: readonly BudgetInstance[],
+    children: readonly TreeNode[],
+  ) {
+    super(accountLabel, budgets, children);
+  }
+}
+
+export class GhostNode extends TreeNode {
+  constructor(
+    accountLabel: AccountLabel,
+    children: readonly TreeNode[],
+  ) {
+    super(accountLabel, [], children);
   }
 }
 
@@ -100,18 +119,18 @@ export function insertBudget(
   root: BudgetTreeNode,
   targetLabel: AccountLabel,
   inst: BudgetInstance,
-): BudgetTreeNode {
+): TreeNode {
   assertIsDescendant(root.accountLabel, targetLabel);
   return insertAt(root, targetLabel, root.accountLabel.length, inst);
 }
 
 function insertAt(
-  node: BudgetTreeNode,
+  node: TreeNode,
   targetSegs: AccountLabel,
   depth: number,
   inst: BudgetInstance,
-): BudgetTreeNode {
-  // Base case: this node IS the target.
+): TreeNode {
+  // Base case: this node IS the target — always produces a BudgetTreeNode.
   if (depth === targetSegs.length) {
     const newBudgets = sortedInsert(node.budgets, inst);
     return new BudgetTreeNode(node.accountLabel, newBudgets, node.children);
@@ -124,9 +143,10 @@ function insertAt(
     (c) => labelEquals(c.accountLabel, nextLabel),
   );
 
-  let updatedChildren: BudgetTreeNode[];
+  let updatedChildren: TreeNode[];
 
   if (existingIdx !== -1) {
+    // Descend into the existing child, preserving its concrete type.
     const updatedChild = insertAt(node.children[existingIdx]!, targetSegs, depth + 1, inst);
     updatedChildren = [
       ...node.children.slice(0, existingIdx),
@@ -134,8 +154,9 @@ function insertAt(
       ...node.children.slice(existingIdx + 1),
     ];
   } else {
+    // Missing intermediate → GhostNode, not BudgetTreeNode.
     const newChild = insertAt(
-      new BudgetTreeNode(nextLabel, [], []),
+      new GhostNode(nextLabel, []),
       targetSegs,
       depth + 1,
       inst,
@@ -143,6 +164,10 @@ function insertAt(
     updatedChildren = [...node.children, newChild];
   }
 
+  // Preserve the concrete type of the current (non-target) node.
+  if (node instanceof GhostNode) {
+    return new GhostNode(node.accountLabel, updatedChildren);
+  }
   return new BudgetTreeNode(node.accountLabel, node.budgets, updatedChildren);
 }
 
@@ -163,19 +188,24 @@ export function deleteBudget(
   root: BudgetTreeNode,
   targetLabel: AccountLabel,
   targetRange: DateRange,
-): BudgetTreeNode {
+): TreeNode {
   assertIsDescendant(root.accountLabel, targetLabel);
   return deleteAt(root, targetLabel, root.accountLabel.length, targetRange);
 }
 
 function deleteAt(
-  node: BudgetTreeNode,
+  node: TreeNode,
   targetSegs: AccountLabel,
   depth: number,
   targetRange: DateRange,
-): BudgetTreeNode {
+): TreeNode {
   // Base case: this node IS the target — remove the matching budget.
   if (depth === targetSegs.length) {
+    if (!(node instanceof BudgetTreeNode)) {
+      throw new Error(
+        `Cannot delete a budget from ghost node "${labelToString(node.accountLabel)}".`,
+      );
+    }
     const idx = node.budgets.findIndex((b) => dateRangeEquals(b.effectiveRange, targetRange));
     if (idx === -1) {
       throw new Error(
@@ -183,6 +213,10 @@ function deleteAt(
       );
     }
     const newBudgets = [...node.budgets.slice(0, idx), ...node.budgets.slice(idx + 1)];
+    // Demote to GhostNode once all own budgets are removed.
+    if (newBudgets.length === 0) {
+      return new GhostNode(node.accountLabel, node.children);
+    }
     return new BudgetTreeNode(node.accountLabel, newBudgets, node.children);
   }
 
@@ -203,6 +237,10 @@ function deleteAt(
     ...node.children.slice(existingIdx + 1),
   ];
 
+  // Preserve the concrete type of the current (non-target) node.
+  if (node instanceof GhostNode) {
+    return new GhostNode(node.accountLabel, updatedChildren);
+  }
   return new BudgetTreeNode(node.accountLabel, node.budgets, updatedChildren);
 }
 

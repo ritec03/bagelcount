@@ -442,3 +442,179 @@ describe('deleteBudget', () => {
     expect(root.budgets).toHaveLength(1);
   });
 });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GhostNode behaviour in insertBudget / deleteBudget
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Test Strategy (ZOMBIES)
+//   Z – Zero  : insert into empty root; no intermediate nodes needed
+//   O – One   : two-segment path; one intermediate ghost appears
+//   M – Many  : three-level path; all intermediate nodes are ghosts
+//   B – Boundary: inserting when a ghost already exists preserves it as ghost
+//   I – Interface: instanceof GhostNode / BudgetTreeNode discriminates correctly
+//   E – Exceptions: deleting from a GhostNode throws
+//   S – Simple: demoting BudgetTreeNode→GhostNode after last budget removed
+
+import { GhostNode } from './budgetNode';
+
+describe('insertBudget — ghost intermediate nodes (I)', () => {
+  // O – one intermediate level creates a GhostNode, not a BudgetTreeNode
+  it('O – creates a GhostNode (not BudgetTreeNode) for a missing intermediate level', () => {
+    /*
+     * Tree before:
+     *   Expenses  (root BudgetTreeNode)
+     *
+     * Insert at Expenses:Food:Restaurants
+     *
+     * Tree after:
+     *   Expenses        (BudgetTreeNode, unchanged)
+     *   └── Food        ← this should be GhostNode
+     *       └── Restaurants ← BudgetTreeNode (has the budget)
+     */
+    const root = new BudgetTreeNode(label('Expenses'), [], []);
+    const inst = instance('2026-01-01', null, 500);
+
+    const result = insertBudget(root, label('Expenses:Food:Restaurants'), inst);
+
+    const food = result.children[0]!;
+    // Assert – 'Food' is the ghost intermediate node
+    expect(food).toBeInstanceOf(GhostNode);
+    expect(food.budgets).toHaveLength(0);
+    // Assert – 'Restaurants' is the real budget node
+    const restaurants = food.children[0]!;
+    expect(restaurants).toBeInstanceOf(BudgetTreeNode);
+    expect(restaurants.budgets).toHaveLength(1);
+  });
+
+  // M – three levels deep: two ghost intermediates
+  it('M – all intermediate nodes are GhostNodes across three levels', () => {
+    /*
+     * Tree before:
+     *   Expenses (root)
+     *
+     * Insert at Expenses:Food:Dining:Sushi
+     *
+     *   Expenses
+     *   └── Food       ← GhostNode
+     *       └── Dining ← GhostNode
+     *           └── Sushi ← BudgetTreeNode
+     */
+    const root = new BudgetTreeNode(label('Expenses'), [], []);
+    const inst = instance('2026-01-01', null, 200);
+
+    const result = insertBudget(root, label('Expenses:Food:Dining:Sushi'), inst);
+
+    const food   = result.children[0]!;
+    const dining = food.children[0]!;
+    const sushi  = dining.children[0]!;
+
+    expect(food).toBeInstanceOf(GhostNode);
+    expect(dining).toBeInstanceOf(GhostNode);
+    expect(sushi).toBeInstanceOf(BudgetTreeNode);
+    expect(sushi.budgets).toHaveLength(1);
+  });
+
+  // B – inserting a second budget at the same path preserves ghost intermediates
+  it('B – re-traversing an existing GhostNode keeps it as a GhostNode', () => {
+    /*
+     * First insert creates:  Expenses → Food (ghost) → Restaurants (budget)
+     * Second insert at same path adds another budget.
+     * 'Food' must remain a GhostNode after both insertions.
+     */
+    const root  = new BudgetTreeNode(label('Expenses'), [], []);
+    const inst1 = instance('2026-01-01', '2026-06-30', 500);
+    const inst2 = instance('2026-07-01', null, 600);
+
+    const after1 = insertBudget(root, label('Expenses:Food:Restaurants'), inst1);
+    const after2 = insertBudget(after1, label('Expenses:Food:Restaurants'), inst2);
+
+    const food = after2.children[0]!;
+    expect(food).toBeInstanceOf(GhostNode);
+    expect(food.children[0]!.budgets).toHaveLength(2);
+  });
+
+  // I – direct insert into root still returns BudgetTreeNode (not ghost)
+  it('I – inserting directly at the root produces a BudgetTreeNode (never ghost)', () => {
+    const root = new BudgetTreeNode(label('Expenses'), [], []);
+    const inst = instance('2026-01-01', null, 1000);
+
+    const result = insertBudget(root, label('Expenses'), inst);
+    expect(result).toBeInstanceOf(BudgetTreeNode);
+    expect(result.budgets).toHaveLength(1);
+  });
+});
+
+describe('deleteBudget — demotion to GhostNode (S/Z/E)', () => {
+  // S – removing the last budget demotes the node to GhostNode
+  it('S – node becomes GhostNode after its last budget is removed', () => {
+    /*
+     * Tree:
+     *   Expenses (root)
+     *   └── Food (BudgetTreeNode, one budget)
+     *
+     * Delete that budget → Food becomes GhostNode
+     */
+    const inst  = instance('2026-01-01', null, 500);
+    const child = new BudgetTreeNode(label('Expenses:Food'), [inst], []);
+    const root  = new BudgetTreeNode(label('Expenses'), [], [child]);
+
+    const result = deleteBudget(root, label('Expenses:Food'), inst.effectiveRange);
+
+    const food = result.children[0]!;
+    expect(food).toBeInstanceOf(GhostNode);
+    expect(food.budgets).toHaveLength(0);
+  });
+
+  // Z – node with multiple budgets stays BudgetTreeNode after one is removed
+  it('Z – node with remaining budgets stays a BudgetTreeNode after partial deletion', () => {
+    const jan = instance('2026-01-01', '2026-06-30', 500);
+    const jul = instance('2026-07-01', null, 600);
+    const child = new BudgetTreeNode(label('Expenses:Food'), [jan, jul], []);
+    const root  = new BudgetTreeNode(label('Expenses'), [], [child]);
+
+    const result = deleteBudget(root, label('Expenses:Food'), jan.effectiveRange);
+
+    const food = result.children[0]!;
+    expect(food).toBeInstanceOf(BudgetTreeNode);
+    expect(food.budgets).toHaveLength(1);
+  });
+
+  // B – demoted node retains its children
+  it('B – demoting to GhostNode preserves the node\'s existing children', () => {
+    /*
+     * Tree:
+     *   Food (BudgetTreeNode, 1 budget)
+     *   └── Groceries (BudgetTreeNode)
+     *
+     * Delete Food's budget → Food becomes GhostNode but keeps Groceries child.
+     */
+    const grandchildInst = instance('2026-01-01', null, 300);
+    const grandchild = new BudgetTreeNode(label('Expenses:Food:Groceries'), [grandchildInst], []);
+    const foodInst   = instance('2026-01-01', null, 1000);
+    const child = new BudgetTreeNode(label('Expenses:Food'), [foodInst], [grandchild]);
+    const root  = new BudgetTreeNode(label('Expenses'), [], [child]);
+
+    const result = deleteBudget(root, label('Expenses:Food'), foodInst.effectiveRange);
+
+    const food = result.children[0]!;
+    expect(food).toBeInstanceOf(GhostNode);
+    expect(food.children).toHaveLength(1);   // Groceries child preserved
+  });
+
+  // E – deleting from a node that is already a GhostNode throws
+  it('E – throws when attempting to delete a budget from a GhostNode', () => {
+    /*
+     * Simulate a tree where an intermediate node is a GhostNode.
+     * Trying to delete a budget at that node's path must throw.
+     */
+    const ghostChild = new GhostNode(label('Expenses:Food'), []);
+    const root = new BudgetTreeNode(label('Expenses'), [], [ghostChild]);
+
+    expect(() =>
+      deleteBudget(root, label('Expenses:Food'), range('2026-01-01', null)),
+    ).toThrow();
+  });
+});
+

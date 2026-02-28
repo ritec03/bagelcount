@@ -40,7 +40,6 @@ export class BudgetTree {
    * Public insert: handles the logic of calling the recursive insert function.
    */
   insert(targetLabel: AccountLabel, inst: BudgetInstance): BudgetTree {
-    // We call your existing standalone function and wrap the result
     const newRoot = insertBudget(this.root, targetLabel, inst);
     return new BudgetTree(newRoot, this.configs);
   }
@@ -49,6 +48,7 @@ export class BudgetTree {
    * Public delete: handles the logic of calling the recursive delete function.
    */
   delete(targetLabel: AccountLabel, targetRange: DateRange): BudgetTree {
+    // Root can never be demoted to a GhostNode, so the cast is safe.
     const newRoot = deleteBudget(this.root, targetLabel, targetRange);
     return new BudgetTree(newRoot, this.configs);
   }
