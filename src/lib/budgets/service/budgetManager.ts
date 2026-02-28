@@ -549,7 +549,7 @@ class BudgetFacadeImpl implements BudgetFacade {
    * current tree's violation map to attach per-budget warnings.
    */
   #buildExtendedList(raws: BudgetAllocation[]): ExtendedBudget[] {
-    const violations    = this.#tree ? this.#tree.validateTree() : {};
+    const violations    = this.#forest ? this.#forest.validateAll() : {};
     const warningIndex  = indexWarningsByBudgetId(violations);
 
     return raws.map((raw) => ({

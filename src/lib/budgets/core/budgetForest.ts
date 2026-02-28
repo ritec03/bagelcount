@@ -1,11 +1,12 @@
-import { makeAccountLabel } from "./accountLabel";
+import { labelEquals, makeAccountLabel } from "./accountLabel";
 import type { AccountLabel } from "./accountLabel";
 import type { BudgetInstance } from "./budgetInstance";
 import { BudgetTree } from "./budgetTree";
-import type { ConstraintConfig, ConstraintViolationMap } from "../constraints/constraints";
+import { mergeViolations, type ConstraintConfig, type ConstraintViolationMap } from "../constraints/constraints";
 import type { OperationFailure, OperationSuccess } from "../service/budgetManagerInterface";
 import type { PeriodType } from "@/lib/models/types";
 import { DateRange } from "@/lib/utils/dateRange";
+import type { BudgetTreeNode } from "./budgetNode";
 
 export type BudgetForestOperationResult =
   | ({ forest: ABudgetForest } & OperationSuccess)
@@ -126,6 +127,37 @@ export class BudgetForest extends ABudgetForest {
   }
 
   validateAll(): ConstraintViolationMap {
-    throw new Error("BudgetForest.validateAll: not implemented");
+    // TODO implement proper forest-level validation
+    let violationsMap: ConstraintViolationMap = {};
+    for(const [_, value] of this.#trees.entries()) {
+      violationsMap = mergeViolations(violationsMap, value.validateTree());
+    }
+    return violationsMap;
   }
+
+  /**
+   * Get all nodes for account label by period type
+   * Useful for validation - 
+   * @param label 
+   * @returns 
+   */
+  getNodesByPeriod(label: AccountLabel): Partial<Record<PeriodType, BudgetTreeNode[]>> {
+    const result: Partial<Record<PeriodType, BudgetTreeNode[]>> = {};
+    for (const [period, tree] of this.#trees) {
+      const node = findNode(tree.root, label);
+      if (node !== undefined) {
+        result[period] = [node];
+      }
+    }
+    return result;
+  }
+}
+
+function findNode(node: BudgetTreeNode, target: AccountLabel): BudgetTreeNode | undefined {
+  if (labelEquals(node.accountLabel, target)) return node;
+  for (const child of node.children) {
+    const found = findNode(child, target);
+    if (found !== undefined) return found;
+  }
+  return undefined;
 }

@@ -99,3 +99,22 @@ export function* iterateViolations(
     }
   }
 }
+/**
+ * Merge two {@link ConstraintViolationMap} objects, concatenating warning
+ * arrays for each constraint key that appears in both.
+ */
+export function mergeViolations(a: ConstraintViolationMap, b: ConstraintViolationMap): ConstraintViolationMap {
+  if (Object.keys(b).length === 0) return a;
+  if (Object.keys(a).length === 0) return b;
+
+  const result: ConstraintViolationMap = { ...a };
+  for (const key of Object.keys(b) as Constraint[]) {
+    const bWarnings = b[key];
+    if (bWarnings === undefined || bWarnings.length === 0) continue;
+    const existing = result[key];
+    // TypeScript requires a cast here because the mapped type is indexed.
+    (result as Record<Constraint, unknown>)[key] =
+      existing !== undefined ? [...existing, ...bWarnings] : [...bWarnings];
+  }
+  return result;
+}
