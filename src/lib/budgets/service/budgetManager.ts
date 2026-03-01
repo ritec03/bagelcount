@@ -16,7 +16,6 @@ import type { BudgetAllocation, BudgetType, CustomBudgetOutput, PeriodType, Stan
 import { makeAccountLabel, type AccountLabel } from '../core/accountLabel';
 import { BudgetInstance } from '../core/budgetInstance';
 import { BudgetTreeNode } from '../core/budgetNode';
-import { BudgetTree } from '../core/budgetTree';
 import type {
   Constraint,
   ConstraintConfig,
@@ -28,9 +27,7 @@ import { normalizeBudgetAmount } from '../../budgetCalculations';
 import type {
   BudgetFacade,
   ExtendedBudget,
-  OperationFailure,
   OperationResult,
-  OperationSuccess,
 } from './budgetManagerInterface';
 import type { ABudgetForest } from '../core/budgetForest';
 import { BudgetForest } from '../core/budgetForest';
@@ -86,23 +83,6 @@ function indexWarningsByBudgetId(
 
 /**
  * Collect the set of budget ids that are referenced by a `ConstraintViolationMap`
- * (either as the primary `budgetId` or as `exceedingChildIds`).
- */
-function affectedIds(violations: ConstraintViolationMap): Set<string> {
-  const ids = new Set<string>();
-  for (const key of Object.keys(violations) as Constraint[]) {
-    const warns = violations[key];
-    if (!warns) continue;
-    for (const w of warns) {
-      ids.add(w.budgetId);
-      if ('exceedingChildIds' in w) {
-        for (const cid of w.exceedingChildIds) ids.add(cid);
-      }
-      if ('parentId' in w) ids.add(w.parentId);
-    }
-  }
-  return ids;
-}
 
 /** Walk the entire tree and collect every `BudgetInstance` into a flat array. */
 function collectAllInstances(
@@ -139,7 +119,6 @@ function collectAllInstancesInForest(
 // ─────────────────────────────────────────────────────────────────────────────
 
 class BudgetFacadeImpl implements BudgetFacade {
-  #tree: BudgetTree | null = null;
   #customBudgets: (BudgetInstance & {accountLabel: AccountLabel})[] = [];
   #forest: ABudgetForest | null = null;
   /** id → raw StandardBudgetOutput */
@@ -449,79 +428,59 @@ class BudgetFacadeImpl implements BudgetFacade {
   // ── removeBudget ─────────────────────────────────────────────────────────
 
   removeBudget(id: string): OperationResult {
+    if (this.#forest == null) {
+      return { success: false, errors: {}, warnings: {} };
+    }
+
     const existing = this.#rawById.get(id);
-    if (!existing || this.#tree === null) {
-      return this.#failure({ errors: {}, warnings: {} });
+    if (!existing) {
+      return { success: false, errors: {}, warnings: {} };
+    }
+
+    if (!this.isStandardBudget(existing)) {
+      // TODO: handle custom budget removal
+      return { success: false, errors: {}, warnings: {} };
     }
 
     const inst = rawToInstance(existing);
-    let tentativeTree: BudgetTree;
+    let nextForest: ABudgetForest;
     try {
-      tentativeTree = this.#tree.delete(
+      nextForest = this.#forest.deleteBudget(
+        existing.frequency,
         makeAccountLabel(existing.account),
         inst.effectiveRange,
       );
     } catch {
-      return this.#failure({ errors: {}, warnings: {} });
+      return { success: false, errors: {}, warnings: {} };
     }
 
-    const allViolations = tentativeTree.validateTree();
-
-    // Removing a child can only reduce the children sum — the
-    // ParentChildrenSum constraint never blocks a well-formed removal.
-    // Still run validation so sibling/parent warnings are recalculated.
-
-    // Commit.
-    this.#tree = tentativeTree;
+    // Commit — removal never introduces violations, so no blocking check needed.
+    this.#forest = nextForest;
     this.#rawById.delete(id);
 
-    // Include all budgets affected by the new constraint state, the parent
-    // node(s) that lost a child, AND all remaining siblings (so callers can
-    // clear or update their constraint warnings after the tree changes).
-    const changedIds = new Set<string>(affectedIds(allViolations));
-    this.#findParentIds(existing.account).forEach((pid) => changedIds.add(pid));
-    this.#findSiblingIds(existing.account).forEach((sid) => changedIds.add(sid));
+    // Build updates for parents + siblings whose warning state may have changed.
+    // The removed budget itself is intentionally excluded from updates.
+    const affectedIdSet = new Set<string>();
+    this.#findParentIds(existing.account).forEach((pid) => affectedIdSet.add(pid));
+    this.#findSiblingIds(existing.account).forEach((sid) => affectedIdSet.add(sid));
 
-    // Do NOT include the removed id in updates.
-    changedIds.delete(id);
-    this.#updateCacheAndNotifyListeners();
+    const rawsToRender: BudgetAllocation[] = [...affectedIdSet]
+      .map((aid) => this.#rawById.get(aid))
+      .filter((r): r is BudgetAllocation => r !== undefined);
 
-    return this.#success(allViolations, changedIds);
-  }
-
-  // ── Private helpers ───────────────────────────────────────────────────────
-
-  /** Extract affected ids for a given target budget */
-
-  /**
-   * Build an `OperationSuccess` from the current committed tree state.
-   * `changedIds` controls which budgets appear in `updates`.
-   * `overrides` allows injecting temporary pseudo-budgets (like previews)
-   * into the result so their generated warnings can be extracted.
-   */
-  #success(
-    violations: ConstraintViolationMap,
-    changedIds: Set<string>,
-    overrides?: Map<string, StandardBudgetOutput>
-  ): OperationSuccess {
-    const warningIndex = indexWarningsByBudgetId(violations);
     const updates: Record<string, ExtendedBudget> = {};
-
-    for (const id of changedIds) {
-      const raw = overrides?.get(id) ?? this.#rawById.get(id);
-      if (!raw) continue; // removed budget — skip
-      updates[id] = {
-        ...raw,
-        warnings: warningIndex.get(id) ?? {},
-      };
+    for (const ext of this.#buildExtendedList(rawsToRender)) {
+      updates[ext.id] = ext;
     }
 
+    this.#updateCacheAndNotifyListeners();
     return { success: true, updates };
   }
 
-  #failure(payload: { errors: ConstraintViolationMap; warnings: ConstraintViolationMap }): OperationFailure {
-    return { success: false, ...payload };
-  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────
+
+
 
   /**
    * Build an `ExtendedBudget[]` for the given raws in order, using the
