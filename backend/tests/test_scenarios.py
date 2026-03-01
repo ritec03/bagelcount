@@ -179,6 +179,7 @@ def test_scenario_write_budget(test_client_with_sample):
     client, (temp_ledger, temp_budget) = test_client_with_sample
 
     payload = {
+        "id": "scenario-id-utilities",
         "account": "Expenses:Utilities",
         "amount": "120.00",
         "currency": "USD",

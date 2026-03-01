@@ -52,7 +52,7 @@ export function createBudgetFacade(): BudgetFacade {
 /** Parse a `StandardBudgetOutput` into a `BudgetInstance` for tree internals. */
 function rawToInstance(raw: BudgetAllocation): BudgetInstance {
   const start = NaiveDate.fromString(raw.start_date);
-  const end   = raw.end_date !== null ? NaiveDate.fromString(raw.end_date) : null;
+  const end   = raw.end_date !== null && raw.end_date !== undefined ? NaiveDate.fromString(raw.end_date) : null;
   return new BudgetInstance(new DateRange(start, end), parseFloat(raw.amount), raw.id);
 }
 
@@ -234,8 +234,8 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── getActiveBudgets ─────────────────────────────────────────────────────
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getActiveBudgets(periodTypeOrCustom: BudgetType, target: NaiveDate, dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[] {
+  // @typescript-eslint/no-unused-vars
+  getActiveBudgets(periodTypeOrCustom: BudgetType, target: NaiveDate, _dummyBudgetInput: ExtendedBudget[]): ExtendedBudget[] {
     if (this.#forest === null) return [];
     let visibleIds: Set<string>;
 

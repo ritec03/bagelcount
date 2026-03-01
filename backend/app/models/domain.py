@@ -1,8 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Literal
 from datetime import date
 from decimal import Decimal
-import uuid
 
 
 class Account(BaseModel):
@@ -27,7 +26,7 @@ class Transaction(BaseModel):
 
 
 class BaseBudget(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str
     account: str
     amount: Decimal
     currency: str = "CAD"  # TODO remove default value here

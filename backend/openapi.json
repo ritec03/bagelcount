@@ -366,6 +366,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
@@ -425,6 +426,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
@@ -544,6 +546,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
@@ -619,6 +622,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "account",
           "amount",
           "start_date",
