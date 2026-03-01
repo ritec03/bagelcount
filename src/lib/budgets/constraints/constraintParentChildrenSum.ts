@@ -8,6 +8,7 @@ import type {
   ConstraintViolationMap,
   ParentChildrenSumWarning,
 } from '@/lib/budgets/constraints/constraints';
+import { accountNameFromLabelExcludingFrequency } from '../core/accountLabel';
 
 type PCSConfig = ConstraintRegistry['ParentChildrenSum']['Config'];
 
@@ -104,7 +105,13 @@ function buildWarnings(
 ): ParentChildrenSumWarning[] {
   const overage = childrenSum - parentInst.amount;
   const warnings: ParentChildrenSumWarning[] = [];
-  const parentLabel = parentNode.accountLabel[parentNode.accountLabel.length - 1] ?? '';
+
+  // Extract the real account name (skip period-type segments in unified-tree labels).
+  const parentAccName = accountNameFromLabelExcludingFrequency(parentNode.accountLabel);
+  const parentFreq    = nodeFrequency(parentNode);
+  const parentLabel   = parentFreq !== null
+    ? `${parentAccName} (${parentFreq})`
+    : parentAccName;
 
   if (config.parent !== 'disabled') {
     warnings.push({

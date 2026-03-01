@@ -3,6 +3,8 @@
 // AccountLabel – branded segment array
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { PERIOD_TYPES, type PeriodType } from "@/lib/models/types";
+
 declare const accountLabelBrand: unique symbol;
 
 /**
@@ -42,4 +44,17 @@ export function labelEquals(a: AccountLabel, b: AccountLabel): boolean {
 /** Join an {@link AccountLabel} back to its colon-separated string form. */
 export function labelToString(lbl: AccountLabel): string {
   return lbl.join(':');
+}
+
+/**
+ * Return the last segment of a label that is NOT a period-type keyword.
+ *
+ * In the unified tree, labels look like `[..., 'Food', 'yearly', 'quarterly', 'monthly']`.
+ * Walking backward past the period segments gives us the real account name (`'Food'`).
+ */
+export function accountNameFromLabelExcludingFrequency(label: AccountLabel): string {
+  for (let i = label.length - 1; i >= 0; i--) {
+    if (!PERIOD_TYPES.has(label[i] as PeriodType)) return label[i]!;
+  }
+  return label[0] ?? '';
 }

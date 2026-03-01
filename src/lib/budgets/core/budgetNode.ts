@@ -1,6 +1,8 @@
 import { DateRange, dateRangeEquals, overlap } from '@/lib/utils/dateRange';
 import { labelEquals, labelToString, makeAccountLabel, type AccountLabel } from './accountLabel';
 import { sortAndValidate, sortedInsert, type BudgetInstance } from './budgetInstance';
+import type { PeriodType } from '@/lib/models/types';
+import { PERIOD_TYPES } from '@/lib/models/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BudgetTreeNode
@@ -248,9 +250,6 @@ function deleteAt(
 // Cross-frequency utilities (used by constraint checkers on the unified tree)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { PeriodType } from '@/lib/models/types';
-
-const PERIOD_SEGMENTS = new Set<string>(['yearly', 'quarterly', 'monthly']);
 
 /**
  * Return the {@link PeriodType} encoded in a unified-tree node's label, or
@@ -266,7 +265,7 @@ const PERIOD_SEGMENTS = new Set<string>(['yearly', 'quarterly', 'monthly']);
  */
 export function nodeFrequency(node: TreeNode): PeriodType | null {
   const lastSeg = node.accountLabel[node.accountLabel.length - 1];
-  if (lastSeg !== undefined && PERIOD_SEGMENTS.has(lastSeg)) {
+  if (lastSeg !== undefined && PERIOD_TYPES.has(lastSeg as PeriodType)) {
     return lastSeg as PeriodType;
   }
   return null;

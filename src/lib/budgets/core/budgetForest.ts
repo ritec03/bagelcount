@@ -5,6 +5,7 @@ import { BudgetTree } from "./budgetTree";
 import { type ConstraintConfig, type ConstraintViolationMap } from "../constraints/constraints";
 import type { OperationFailure, OperationSuccess } from "../service/budgetManagerInterface";
 import type { PeriodType } from "@/lib/models/types";
+import { PERIOD_TYPE_LIST } from "@/lib/models/types";
 import { DateRange } from "@/lib/utils/dateRange";
 import type { BudgetTreeNode } from "./budgetNode";
 
@@ -60,8 +61,6 @@ const PERIOD_PATH_SUFFIX: Record<PeriodType, readonly PeriodType[]> = {
   monthly:   ['yearly', 'quarterly', 'monthly'],
 };
 
-/** Full chain inserted after every intermediate account segment. */
-const FULL_PERIOD_CHAIN: readonly PeriodType[] = ['yearly', 'quarterly', 'monthly'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Concrete implementation
@@ -268,7 +267,7 @@ export class BudgetForest extends ABudgetForest {
         for (let i = 0; i < label.length; i++) {
           pathParts.push(label[i]!);
           if (i < label.length - 1) {
-            pathParts.push(...FULL_PERIOD_CHAIN);
+            pathParts.push(...PERIOD_TYPE_LIST);
           } else {
             pathParts.push(...PERIOD_PATH_SUFFIX[period]);
           }

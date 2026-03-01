@@ -93,7 +93,8 @@ describe("useBudgetValidation", () => {
     );
 
     expect(result.current.isValid).toBe(false);
-    expect(result.current.error).toContain('This budget contributes to exceeding the parent budget "Food".');
+    expect(result.current.error).toContain('This budget contributes to exceeding the parent budget "Food (monthly)".');
+
     expect(result.current.availableBudget).toBe(400);
   });
 
@@ -280,7 +281,7 @@ describe("useBudgetValidation (TDD Spec)", () => {
       );
 
       expect(result.current.isValid).toBe(false);
-      expect(result.current.error).toContain("Exceeds parent budget");
+      expect(result.current.error).toContain('This budget contributes to exceeding the parent budget "Food (yearly)".');
     });
 
     it("should ALLOW Yearly child fitting into Monthly parent", () => {
@@ -400,7 +401,7 @@ describe("useBudgetValidation (TDD Spec)", () => {
       );
       expect(invalidHook.result.current.warnings).toHaveLength(1);
       expect(invalidHook.result.current.warnings[0]).toContain(
-        "monthly budget for this account totals $6000.00/yr",
+        "Children sum (6000) exceeds parent budget (5000) by 1000.",
       );
     });
 
@@ -425,7 +426,7 @@ describe("useBudgetValidation (TDD Spec)", () => {
         "monthly",
       );
 
-      expect(result.current.error).toContain("Exceeds parent budget");
+      expect(result.current.error).toContain('This budget contributes to exceeding the parent budget "Food (yearly)".');
     });
 
     it("should BLOCK if Same-Account Consistency is violated (Yearly 1000 vs Monthly 500)", () => {
@@ -442,7 +443,7 @@ describe("useBudgetValidation (TDD Spec)", () => {
       );
       expect(result.current.isValid).toBe(false);
       expect(result.current.error).toContain(
-        "Exceeds budget set by other period",
+        'This budget contributes to exceeding the parent budget "Food (yearly)".',
       );
     });
 
@@ -467,10 +468,10 @@ describe("useBudgetValidation (TDD Spec)", () => {
       expect(result.current.isValid).toBe(true);
       expect(result.current.warnings).toHaveLength(1);
       expect(result.current.warnings[0]).toContain(
-        "Sub-categories total $2700.00/yr",
+        "Children sum (2700) exceeds parent budget (600) by 2100.",
       );
       expect(result.current.warnings[0]).toContain(
-        "additional $2100.00/yearly",
+        'Children sum (2700) exceeds parent budget (600) by 2100.',
       );
     });
 
@@ -595,7 +596,7 @@ describe("Red Team: useBudgetValidation Edge Cases", () => {
     expect(result.current.isValid).toBe(true); // Warnings are non-blocking
     expect(result.current.warnings).toHaveLength(1); // But should still warn
     expect(result.current.warnings[0]).toContain(
-      "Sub-categories total $6000.00/yr",
+      "Children sum (6000) exceeds parent budget (0) by 6000.",
     );
   });
 
@@ -759,7 +760,7 @@ describe("Red Team: useBudgetValidation Edge Cases", () => {
     // Assert — should be blocked
     expect(result.current.isValid).toBe(false);
     expect(result.current.error).toContain(
-      "Exceeds budget set by other period",
+      'This budget contributes to exceeding the parent budget "Food (yearly)".',
     );
   });
 
@@ -815,6 +816,6 @@ describe("Red Team: useBudgetValidation Edge Cases", () => {
 
     // Assert — should be blocked by same-frequency parent
     expect(result.current.isValid).toBe(false);
-    expect(result.current.error).toContain('This budget contributes to exceeding the parent budget "Food".');
+    expect(result.current.error).toContain('This budget contributes to exceeding the parent budget "Food (monthly)".');
   });
 });
