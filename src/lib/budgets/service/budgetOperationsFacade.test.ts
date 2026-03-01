@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { StandardBudgetOutput } from '@/lib/models/types';
+import { isStandardBudget, type StandardBudgetOutput } from '@/lib/models/types';
 import type { ConstraintConfig } from '@/lib/budgets/constraints/constraints';
 import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/service/budgetManager';
 import { NaiveDate } from '@/lib/utils/dateUtil';
@@ -101,6 +101,9 @@ describe('BudgetFacade.initializeBudgets', () => {
       });
 
       const [result] = facade.initializeBudgets([raw], ALL_DISABLED);
+      if (!isStandardBudget(result)) {
+        throw Error("Not a standard budget.");
+      }
 
       expect(result!.id).toBe('b1');
       expect(result!.account).toBe('Expenses:Food');

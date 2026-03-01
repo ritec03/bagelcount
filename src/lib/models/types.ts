@@ -32,3 +32,6 @@ export const PERIOD_TYPE_LIST: readonly PeriodType[] = ['yearly', 'quarterly', '
  */
 export const PERIOD_TYPES: ReadonlySet<PeriodType> = new Set<PeriodType>(PERIOD_TYPE_LIST);
 
+export function isStandardBudget(raw: BudgetAllocation): raw is StandardBudgetOutput {
+    return 'frequency' in raw;
+}

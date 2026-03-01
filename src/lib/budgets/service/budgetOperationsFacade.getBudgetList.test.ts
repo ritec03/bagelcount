@@ -17,11 +17,11 @@ import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/service
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ALL_DISABLED: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
+  ParentChildrenSum: { parent: 'disabled', child_same_freq: 'disabled', child_lower_freq: 'disabled', child_higher_freq: 'disabled' },
 };
 
 const ALL_WARNING: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'warning', child: 'warning' },
+  ParentChildrenSum: { parent: 'warning', child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' },
 };
 
 type RawOverride = Partial<StandardBudgetOutput> & {

@@ -12,7 +12,7 @@
  *              subsequent mutation operations.
  */
 
-import type { BudgetAllocation, BudgetType, CustomBudgetOutput, PeriodType, StandardBudgetOutput } from '../../models/types';
+import { isStandardBudget, type BudgetAllocation, type BudgetType, type CustomBudgetOutput, type PeriodType, type StandardBudgetOutput } from '../../models/types';
 import { makeAccountLabel, type AccountLabel } from '../core/accountLabel';
 import { BudgetInstance } from '../core/budgetInstance';
 import { BudgetTreeNode } from '../core/budgetNode';
@@ -155,10 +155,6 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── initializeBudgets ────────────────────────────────────────────────────
 
-  private isStandardBudget(raw: BudgetAllocation): raw is StandardBudgetOutput {
-    return 'frequency' in raw;
-  }
-
   initializeBudgets(
     rawBudgets: BudgetAllocation[],
     config: ConstraintConfig,
@@ -204,7 +200,7 @@ class BudgetFacadeImpl implements BudgetFacade {
     for (const raw of primaryGroup) {
       const label = makeAccountLabel(raw.account);
       const inst  = rawToInstance(raw);
-      if (this.isStandardBudget(raw)) {
+      if (isStandardBudget(raw)) {
         forest = forest.insertBudget(raw.frequency, label, inst);
       } else {
         this.#customBudgets.push({...inst, accountLabel: makeAccountLabel(raw.account)})
@@ -299,7 +295,7 @@ class BudgetFacadeImpl implements BudgetFacade {
       budget.id,
     );
 
-    if (this.isStandardBudget(budget)) {
+    if (isStandardBudget(budget)) {
       const result = this.#forest.tryInsert(budget.frequency, makeAccountLabel(budget.account), instance);
       if (!result.success) return result;
 
@@ -371,7 +367,7 @@ class BudgetFacadeImpl implements BudgetFacade {
       return { success: false, errors: {}, warnings: {} };
     }
 
-    if (!this.isStandardBudget(existing)) {
+    if (!isStandardBudget(existing)) {
       // Custom budgets are not yet supported for updates via the forest path.
       return { success: false, errors: {}, warnings: {} };
     }
@@ -439,7 +435,7 @@ class BudgetFacadeImpl implements BudgetFacade {
       return { success: false, errors: {}, warnings: {} };
     }
 
-    if (!this.isStandardBudget(existing)) {
+    if (!isStandardBudget(existing)) {
       // TODO: handle custom budget removal
       return { success: false, errors: {}, warnings: {} };
     }

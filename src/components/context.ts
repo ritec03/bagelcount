@@ -20,7 +20,9 @@ export const BudgetManagerContext = createContext(facade);
 const CONSTRAINT_CONFIG: ConstraintConfig = {
   ParentChildrenSum: {
     parent: 'warning',
-    child: 'blocking',
+    child_same_freq: 'blocking',
+    child_lower_freq: 'warning',
+    child_higher_freq: 'blocking',
   },
 };
 

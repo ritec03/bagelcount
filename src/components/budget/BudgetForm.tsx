@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils/utils";
 import { budgetSchema, type BudgetFormValues } from "@/lib/models/schemas";
-import { useAppStore, type AppState } from "@/hooks/store";
 
 // Type-safe mapper for initialData
 function mapInitialDataToFormValues(
@@ -112,7 +111,6 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   };
 
   // Retrieve current budgets
-  const allBudgets = useAppStore((state: AppState) => state.budgetList)
   // Watch form fields for real-time validation
   // eslint-disable-next-line react-hooks/incompatible-library -- watch() from react-hook-form cannot be memoized, this is expected behavior
   const watchedAccount = watch("account");
@@ -123,7 +121,6 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   
   // Real-time validation hook
   const validation = useBudgetValidation(
-    allBudgets,
     watchedAccount || "",
     parseFloat(watchedAmount) || 0,
     watchedType || "StandardBudget",

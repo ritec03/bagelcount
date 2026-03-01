@@ -222,7 +222,7 @@ export function useBudgetSunburstData(): {
 
     // Normalize budget amounts based on view and mode and strip warnings
     // for building the standard tree
-    const normalizedBudgets: StandardBudgetOutput[] = filteredBudgets.map(b => {
+    const normalizedBudgets = filteredBudgets.map(b => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { warnings, ...standardProps } = b;
       let amount = parseFloat(b.amount as string);
