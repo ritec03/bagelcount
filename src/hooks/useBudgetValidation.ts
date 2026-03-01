@@ -1,14 +1,17 @@
 import { useContext, useMemo } from "react";
 import type { StandardBudgetOutput } from "../lib/models/types";
+import type { ExtendedBudget } from "../lib/budgets/service/budgetManagerInterface";
 import { formatMutationResult } from "../lib/budgets/constraints/constraintMessages";
 import { normalizeBudgetAmount } from "../lib/budgetCalculations";
 import { BudgetManagerContext } from "@/components/context";
-import { iterateViolations } from "@/lib/budgets/constraints/constraints";
+import { iterateViolations, type ConstraintViolationMap } from "@/lib/budgets/constraints/constraints";
 import { useAppStore, type AppState } from "./store";
 
 export interface AffectedChild {
   account: string;
   frequency: 'monthly' | 'quarterly' | 'yearly';
+  id?: string;
+  end_date?: string | null;
 }
 
 export interface ValidationResult {
@@ -99,12 +102,14 @@ export function useBudgetValidation(
         }
 
         const formatted = formatMutationResult(result.errors, result.warnings);
+        const affectedChildren = extractAffectedChildren(result.warnings, budgetId, budgets);
+
         // Compute availableBudget: best-effort from legacy logic for UX hint
         return {
           isValid: isValid,
           error: formatted.errors[0] ?? "Invalid budget.",
           warnings: formatted.warnings,
-          affectedChildren: [],
+          affectedChildren,
           availableBudget,
         };
       }
@@ -112,15 +117,16 @@ export function useBudgetValidation(
       // Success but may still have warnings (e.g. over-allocating children)
       const selfUpdate = result.updates[budgetId];
       const formatted = formatMutationResult({}, selfUpdate.warnings);
+      const affectedChildren = extractAffectedChildren(selfUpdate.warnings, budgetId, budgets);
 
-      return {
-        isValid: true,
-        error: null,
-        warnings: selfUpdate?.warnings && formatted.warnings.length > 0 ? formatted.warnings : [],
-        affectedChildren: [],
-        availableBudget: availableBudget,
-      };
 
+        return {
+          isValid: true,
+          error: null,
+          warnings: formatted.warnings,
+          affectedChildren,
+          availableBudget: availableBudget,
+        };
     } catch {
       // ignore transient parsing errors
       return EMPTY_RESULT;
@@ -132,6 +138,38 @@ export function useBudgetValidation(
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+function extractAffectedChildren(
+  violations: ConstraintViolationMap,
+  budgetId: string,
+  budgets?: ExtendedBudget[],
+): AffectedChild[] {
+  if (!budgets || !violations.ParentChildrenSum) return [];
+  
+  const affected: AffectedChild[] = [];
+  const seenIds = new Set<string>();
+
+  for (const w of violations.ParentChildrenSum) {
+    if (w.budgetId === budgetId && 'exceedingChildIds' in w && w.exceedingChildIds) {
+      for (const cid of w.exceedingChildIds) {
+        if (seenIds.has(cid)) continue;
+        seenIds.add(cid);
+
+        const childBudget = budgets.find((b) => b.id === cid);
+        if (childBudget && 'frequency' in childBudget) {
+          affected.push({
+            id: childBudget.id,
+            account: childBudget.account,
+            frequency: childBudget.frequency as 'monthly' | 'quarterly' | 'yearly',
+            end_date: childBudget.end_date,
+          });
+        }
+      }
+    }
+  }
+
+  return affected;
+}
+
 /**
  * Compute the available budget under the parent for the given account /
  * frequency so we can still show the "Available: $X/freq" hint in the form.
@@ -139,7 +177,7 @@ export function useBudgetValidation(
  * for blocking — the facade handles correctness.
  */
 function computeAvailableBudget(
-  budgets: StandardBudgetOutput[],
+  budgets: ExtendedBudget[],
   account: string,
   _amount: number,
   frequency: BudgetFrequency,
@@ -150,7 +188,7 @@ function computeAvailableBudget(
   const frequencies: BudgetFrequency[] = ['monthly', 'quarterly', 'yearly'];
   const myFreqIndex = frequencies.indexOf(frequency);
 
-  const standardBudgets = budgets;
+  const standardBudgets = budgets.filter((b): b is ExtendedBudget & StandardBudgetOutput => 'frequency' in b);
   const parentBudgets = standardBudgets.filter(b => b.account === parentName);
   if (parentBudgets.length === 0) return null;
 

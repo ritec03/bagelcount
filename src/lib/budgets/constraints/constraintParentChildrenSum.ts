@@ -7,8 +7,10 @@ import type {
   ConstraintRegistry,
   ConstraintViolationMap,
   ParentChildrenSumWarning,
+  PCSRole,
 } from '@/lib/budgets/constraints/constraints';
 import { accountNameFromLabelExcludingFrequency } from '../core/accountLabel';
+import type { PeriodType } from '@/lib/models/types';
 
 type PCSConfig = ConstraintRegistry['ParentChildrenSum']['Config'];
 
@@ -75,22 +77,22 @@ function checkInstance(
 
     if (scaledSum <= parentInst.amount) return [];
 
-    return buildWarnings(parentInst, parentNode, overlapping.map(({ inst }) => inst), scaledSum, config);
+    return buildWarnings(parentInst, parentNode, overlapping, scaledSum, config);
   }
 
   // ── Plain-tree path: no period suffix — original direct-child check ───────
-  const overlappingChildInsts: BudgetInstance[] = [];
+  const overlappingChildInsts: { inst: BudgetInstance; freq: null }[] = [];
   for (const childNode of parentNode.children) {
     for (const childInst of childNode.budgets) {
       if (overlap(parentInst.effectiveRange, childInst.effectiveRange) !== null) {
-        overlappingChildInsts.push(childInst);
+        overlappingChildInsts.push({ inst: childInst, freq: null });
       }
     }
   }
 
   if (overlappingChildInsts.length === 0) return [];
 
-  const childrenSum = overlappingChildInsts.reduce((acc, ci) => acc + ci.amount, 0);
+  const childrenSum = overlappingChildInsts.reduce((acc, ci) => acc + ci.inst.amount, 0);
   if (childrenSum <= parentInst.amount) return [];
 
   return buildWarnings(parentInst, parentNode, overlappingChildInsts, childrenSum, config);
@@ -99,11 +101,10 @@ function checkInstance(
 function buildWarnings(
   parentInst: BudgetInstance,
   parentNode: TreeNode,
-  childInsts: BudgetInstance[],
+  childInsts: { inst: BudgetInstance; freq: PeriodType | null }[],
   childrenSum: number,
   config: PCSConfig,
 ): ParentChildrenSumWarning[] {
-  const overage = childrenSum - parentInst.amount;
   const warnings: ParentChildrenSumWarning[] = [];
 
   // Extract the real account name (skip period-type segments in unified-tree labels).
@@ -114,23 +115,48 @@ function buildWarnings(
     : parentAccName;
 
   if (config.parent !== 'disabled') {
-    warnings.push({
-      budgetId: parentInst.id,
-      role: 'parent',
-      message: `Children sum (${childrenSum}) exceeds parent budget (${parentInst.amount}) by ${overage}.`,
-      exceedingChildIds: childInsts.map(ci => ci.id),
-      overageAmount: overage,
-    });
+    const overage = childrenSum - parentInst.amount;
+    if (overage > 0) {
+      warnings.push({
+        budgetId: parentInst.id,
+        role: 'parent',
+        message: `Children sum (${childrenSum}) exceeds parent budget (${parentInst.amount}) by ${overage}.`,
+        exceedingChildIds: childInsts.map(ci => ci.inst.id),
+        overageAmount: overage,
+      });
+    }
   }
 
-  if (config.child !== 'disabled') {
-    for (const childInst of childInsts) {
-      warnings.push({
-        budgetId: childInst.id,
-        role: 'child',
-        message: `This budget contributes to exceeding the parent budget "${parentLabel}".`,
-        parentId: parentInst.id,
-      });
+  // We know config.parent !== 'disabled' or one of the child modes is enabled,
+  // but we can check the child modes more granularly now.
+  let hasEnabledChildMode = false;
+  if (config.child_higher_freq !== 'disabled' || config.child_lower_freq !== 'disabled' || config.child_same_freq !== 'disabled') {
+    hasEnabledChildMode = true;
+  }
+
+  const overage = childrenSum - parentInst.amount;
+
+  if (hasEnabledChildMode && overage > 0) {
+    for (const { inst: childInst, freq: childFreq } of childInsts) {
+      let role: PCSRole = 'child_same_freq';
+
+      if (childFreq !== null && parentFreq !== null) {
+        const scale = periodScaleFactor(childFreq, parentFreq);
+        if (scale < 1) {
+          role = 'child_lower_freq';
+        } else if (scale > 1) {
+          role = 'child_higher_freq';
+        }
+      }
+
+      if (config[role] !== 'disabled') {
+        warnings.push({
+          budgetId: childInst.id,
+          role: role,
+          message: `This budget contributes to exceeding the parent budget "${parentLabel}".`,
+          parentId: parentInst.id,
+        });
+      }
     }
   }
 

@@ -319,7 +319,8 @@ class BudgetFacadeImpl implements BudgetFacade {
         .filter((r): r is BudgetAllocation => r !== undefined);
 
       const updates: Record<string, ExtendedBudget> = {};
-      for (const ext of this.#buildExtendedList([...affectedRaws, budget])) {
+      const tentativeViolations = result.forest.validateAll();
+      for (const ext of this.#buildExtendedList([...affectedRaws, budget], tentativeViolations)) {
         updates[ext.id] = ext;
       }
 
@@ -415,7 +416,8 @@ class BudgetFacadeImpl implements BudgetFacade {
     }
 
     const updates: Record<string, ExtendedBudget> = {};
-    for (const ext of this.#buildExtendedList(rawsToRender)) {
+    const tentativeViolations = result.forest.validateAll();
+    for (const ext of this.#buildExtendedList(rawsToRender, tentativeViolations)) {
       updates[ext.id] = ext;
     }
 
@@ -486,8 +488,11 @@ class BudgetFacadeImpl implements BudgetFacade {
    * Build an `ExtendedBudget[]` for the given raws in order, using the
    * current tree's violation map to attach per-budget warnings.
    */
-  #buildExtendedList(raws: BudgetAllocation[]): ExtendedBudget[] {
-    const violations    = this.#forest ? this.#forest.validateAll() : {};
+  #buildExtendedList(
+    raws: BudgetAllocation[],
+    overrideViolations?: ConstraintViolationMap
+  ): ExtendedBudget[] {
+    const violations    = overrideViolations ?? (this.#forest ? this.#forest.validateAll() : {});
     const warningIndex  = indexWarningsByBudgetId(violations);
 
     return raws.map((raw) => ({

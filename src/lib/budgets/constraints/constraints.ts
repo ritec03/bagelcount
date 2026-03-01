@@ -18,32 +18,32 @@
 
 import type { TreeNode } from "../core/budgetNode";
 
-type Role = "parent" | "child";
-
 export type ConstraintMode = "blocking" | "warning" | "disabled";
 
-type ConstraintWarning = {
+type ConstraintWarning<R extends string> = {
   budgetId: string;
-  role: Role;
+  role: R;
   message: string;
 }
 
 // TODO potentially rename as there are warnings and errors and this name
 // may confuse.
+export type PCSRole = "parent" | "child_same_freq" | "child_lower_freq" | "child_higher_freq";
+
 export type ParentChildrenSumWarning =
-  | (ConstraintWarning & {
+  | (ConstraintWarning<PCSRole> & {
       role: "parent";
       exceedingChildIds: string[];
       overageAmount: number;
     })
-  | (ConstraintWarning & {
-      role: "child";
+  | (ConstraintWarning<PCSRole> & {
+      role: "child_same_freq" | "child_lower_freq" | "child_higher_freq";
       parentId: string;
     });
 
 export interface ConstraintRegistry {
   ParentChildrenSum: {
-    Config: Record<Role, ConstraintMode>; 
+    Config: Record<PCSRole, ConstraintMode>;
     Warning: ParentChildrenSumWarning;
   };
   // can be extended later
