@@ -28,6 +28,7 @@ export abstract class ABudgetForest {
     period: PeriodType,
     oldLabel: AccountLabel,
     oldRange: DateRange,
+    newLabel: AccountLabel,
     newInst: BudgetInstance,
   ): BudgetForestOperationResult;
   abstract tryDelete(period: PeriodType, label: AccountLabel, range: DateRange): BudgetForestOperationResult;
@@ -110,8 +111,16 @@ export class BudgetForest extends ABudgetForest {
 
   // ── Stubs ──────────────────────────────────────────────────────────────────
 
-  deleteBudget(_period: PeriodType, _label: AccountLabel, _range: DateRange): ABudgetForest {
-    throw new Error("BudgetForest.deleteBudget: not implemented");
+  deleteBudget(period: PeriodType, label: AccountLabel, range: DateRange): BudgetForest {
+    const existing = this.#trees.get(period);
+    if (existing === undefined) {
+      // Nothing to delete — return self unchanged.
+      return this;
+    }
+    const updated = existing.delete(label, range);
+    const nextTrees = new Map(this.#trees);
+    nextTrees.set(period, updated);
+    return new BudgetForest(nextTrees, this.#config);
   }
 
   filter(period: PeriodType | undefined, range: DateRange): BudgetForest {
@@ -152,12 +161,30 @@ export class BudgetForest extends ABudgetForest {
   }
 
   tryUpdate(
-    _period: PeriodType,
-    _oldLabel: AccountLabel,
-    _oldRange: DateRange,
-    _newInst: BudgetInstance,
+    period: PeriodType,
+    oldLabel: AccountLabel,
+    oldRange: DateRange,
+    newLabel: AccountLabel,
+    newInst: BudgetInstance,
   ): BudgetForestOperationResult {
-    throw new Error("BudgetForest.tryUpdate: not implemented");
+    let tentativeForest: BudgetForest;
+    try {
+      tentativeForest = this
+        .deleteBudget(period, oldLabel, oldRange)
+        .insertBudget(period, newLabel, newInst) as BudgetForest;
+    } catch {
+      return { success: false, errors: {}, warnings: {} };
+    }
+
+    const violationsMap = tentativeForest.validateAll();
+    const { errors, warnings } = partitionViolations(violationsMap, this.#config);
+
+    const hasBlockingError = (errors.ParentChildrenSum?.length ?? 0) > 0;
+    if (hasBlockingError) {
+      return { success: false, errors, warnings };
+    }
+
+    return { success: true, forest: tentativeForest, updates: {} };
   }
 
   tryDelete(_period: PeriodType, _label: AccountLabel, _range: DateRange): BudgetForestOperationResult {

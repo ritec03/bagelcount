@@ -20,7 +20,6 @@ import { BudgetTree } from '../core/budgetTree';
 import type {
   Constraint,
   ConstraintConfig,
-  ConstraintMode,
   ConstraintViolationMap,
 } from '../constraints/constraints';
 import { DateRange, overlap } from '../../utils/dateRange';
@@ -60,29 +59,6 @@ function rawToInstance(raw: BudgetAllocation): BudgetInstance {
   return new BudgetInstance(new DateRange(start, end), parseFloat(raw.amount), raw.id);
 }
 
-/**
- * Build a `ConstraintViolationMap` containing only warnings whose role mode
- * matches the given predicate.  Used to split a combined violation map into
- * `errors` (blocking) vs `warnings` (non-blocking) for mutation results.
- */
-function filterViolationsByMode(
-  violations: ConstraintViolationMap,
-  config: ConstraintConfig,
-  predicate: (mode: ConstraintMode) => boolean,
-): ConstraintViolationMap {
-  const result: ConstraintViolationMap = {};
-  for (const key of Object.keys(violations) as Constraint[]) {
-    const warns = violations[key];
-    if (!warns || warns.length === 0) continue;
-    const cfg = config[key];
-    const filtered = warns.filter((w) => predicate(cfg[w.role as keyof typeof cfg]));
-    if (filtered.length > 0) {
-      // Safe cast: filtered items belong to the same constraint key.
-      (result as Record<Constraint, unknown>)[key] = filtered;
-    }
-  }
-  return result;
-}
 
 /**
  * Distribute a flat `ConstraintViolationMap` (keyed by constraint, each entry
@@ -168,9 +144,7 @@ class BudgetFacadeImpl implements BudgetFacade {
   #forest: ABudgetForest | null = null;
   /** id → raw StandardBudgetOutput */
   #rawById: Map<string, StandardBudgetOutput | CustomBudgetOutput> = new Map();
-  #config: ConstraintConfig = {
-    ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
-  };
+
 
   // TODO remove state and listeners from budget facade
 
@@ -210,7 +184,6 @@ class BudgetFacadeImpl implements BudgetFacade {
     rawBudgets: BudgetAllocation[],
     config: ConstraintConfig,
   ): ExtendedBudget[] {
-    this.#config = config;
     this.#rawById = new Map(rawBudgets.map((r) => [r.id, r]));
 
     if (rawBudgets.length === 0) {
@@ -382,19 +355,11 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── previewUpdateBudget ──────────────────────────────────────────────────
 
-
   previewUpdateBudget(
     id: string,
     patch: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, 'id'>,
   ): OperationResult {
-    const preview = this.#tentativeUpdate(id, patch);
-    if (!preview.ok) return preview.result;
-
-    const changedIds = this.#getAffectedIds(id, preview.updated.account, preview.allViolations);
-    
-    // Provide the dummy patched budget as an override to capture its warnings
-    const overrides = new Map([[id, preview.updated]]);
-    return this.#success(preview.allViolations, changedIds, overrides);
+    return this.updateBudgetGeneral(id, patch, false);
   }
 
   // ── updateBudget ─────────────────────────────────────────────────────────
@@ -403,55 +368,83 @@ class BudgetFacadeImpl implements BudgetFacade {
     id: string,
     patch: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, 'id'>,
   ): OperationResult {
-    const preview = this.#tentativeUpdate(id, patch);
-    if (!preview.ok) return preview.result;
-
-    // Commit.
-    this.#tree = preview.tentativeTree;
-    this.#rawById.set(id, preview.updated);
-
-    // Always include the updated budget AND its direct parent so constraint
-    // state is refreshed even when no violations are present.
-    const changedIds = this.#getAffectedIds(id, preview.updated.account, preview.allViolations);
-    this.#updateCacheAndNotifyListeners();
-    return this.#success(preview.allViolations, changedIds);
+    return this.updateBudgetGeneral(id, patch, true);
   }
 
-  /** Shared logic: tentatively apply update patch + validate. Does NOT commit. */
-  #tentativeUpdate(
+  /**
+   * Shared logic for update and preview-update.
+   *
+   * @param commit - when true the change is persisted; when false it is a
+   *                 dry-run (no state mutation).
+   */
+  updateBudgetGeneral(
     id: string,
     patch: Partial<StandardBudgetOutput> & Pick<StandardBudgetOutput, 'id'>,
-  ):
-    | { ok: false; result: OperationResult }
-    | { ok: true; tentativeTree: BudgetTree; allViolations: ConstraintViolationMap; updated: StandardBudgetOutput } {
-    
+    commit: boolean,
+  ): OperationResult {
+    if (this.#forest == null) {
+      return { success: false, errors: {}, warnings: {} };
+    }
+
     const existing = this.#rawById.get(id);
-    if (!existing || this.#tree === null || patch.id !== id) {
-      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
+    if (!existing || patch.id !== id) {
+      return { success: false, errors: {}, warnings: {} };
     }
 
-    const updated: StandardBudgetOutput = { ...existing, ...patch, id };
-
-    let tentativeTree: BudgetTree;
-    try {
-      tentativeTree = this.#tree
-        .delete(makeAccountLabel(existing.account), rawToInstance(existing).effectiveRange)
-        .insert(makeAccountLabel(updated.account), rawToInstance(updated));
-    } catch (e) {
-      console.log("Encountered error previewing update", e);
-      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
+    if (!this.isStandardBudget(existing)) {
+      // Custom budgets are not yet supported for updates via the forest path.
+      return { success: false, errors: {}, warnings: {} };
     }
 
-    const allViolations = tentativeTree.validateTree();
-    const errors   = filterViolationsByMode(allViolations, this.#config, (m) => m === 'blocking');
-    
-    if (Object.keys(errors).length > 0) {
-      const warnings = filterViolationsByMode(allViolations, this.#config, (m) => m === 'warning');
-      return { ok: false, result: this.#failure({ errors, warnings }) };
+    const updated: StandardBudgetOutput = { ...existing, ...patch, id } as StandardBudgetOutput;
+
+    const oldInst  = rawToInstance(existing);
+    const newInst  = rawToInstance(updated);
+    const oldLabel = makeAccountLabel(existing.account);
+    const newLabel = makeAccountLabel(updated.account);
+
+    const result = this.#forest.tryUpdate(
+      existing.frequency,
+      oldLabel,
+      oldInst.effectiveRange,
+      newLabel,
+      newInst,
+    );
+
+    if (!result.success) return result;
+
+    if (commit) {
+      // Commit — replace the forest and update the raw index.
+      this.#forest = result.forest;
+      this.#rawById.set(id, updated);
     }
 
-    return { ok: true, tentativeTree, allViolations, updated };
+    // Build ExtendedBudgets for the updated budget + affected ancestors/siblings.
+    const affectedIds = new Set<string>([id]);
+    this.#findParentIds(updated.account).forEach((aid) => affectedIds.add(aid));
+    this.#findSiblingIds(updated.account).forEach((aid) => affectedIds.add(aid));
+
+    // For a preview the updated budget isn't in #rawById yet, so supply it directly.
+    const rawsToRender: BudgetAllocation[] = [];
+    for (const aid of affectedIds) {
+      if (aid === id) {
+        rawsToRender.push(updated);
+      } else {
+        const r = this.#rawById.get(aid);
+        if (r !== undefined) rawsToRender.push(r);
+      }
+    }
+
+    const updates: Record<string, ExtendedBudget> = {};
+    for (const ext of this.#buildExtendedList(rawsToRender)) {
+      updates[ext.id] = ext;
+    }
+
+    if (commit) this.#updateCacheAndNotifyListeners();
+    return { success: true, updates };
   }
+
+
 
   // ── removeBudget ─────────────────────────────────────────────────────────
 
@@ -499,11 +492,6 @@ class BudgetFacadeImpl implements BudgetFacade {
   // ── Private helpers ───────────────────────────────────────────────────────
 
   /** Extract affected ids for a given target budget */
-  #getAffectedIds(id: string, account: string, violations: ConstraintViolationMap): Set<string> {
-    const ids = new Set<string>([id, ...affectedIds(violations)]);
-    this.#findParentIds(account).forEach((pid) => ids.add(pid));
-    return ids;
-  }
 
   /**
    * Build an `OperationSuccess` from the current committed tree state.
