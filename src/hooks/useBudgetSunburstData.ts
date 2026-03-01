@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
-import type { BudgetAllocation, PeriodType, NormalizationMode, StandardBudgetOutput } from '@/lib/types';
+import { useContext, useMemo } from 'react';
+import type { StandardBudgetOutput } from '@/lib/models/types';
 import {
   calculatePeriodSpent,
-  normalizeBudgetAmount,
-  filterBudgetsByMode
+  normalizeBudgetAmount
 } from '@/lib/budgetCalculations';
-import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetTree';
-import { generateVibrantColor } from '@/lib/colorUtils';
-import type { Transaction } from '../lib/api/types.gen';
+import { NaiveDate } from '@/lib/utils/dateUtil';
+import { buildBudgetTree, type RawTreeNode } from '@/lib/budgetUiTree';
+import { generateVibrantColor } from '@/lib/utils/colorUtils';
+import { BudgetManagerContext } from '@/components/context';
+import { useTransactions } from './useTransactionsQuery';
+import { useBudgetQuery } from './useBudgetQuery';
+import { useAppStore, type AppState } from './store';
 
 // Sunburst Chart Node Types - Discriminated Union
 
@@ -198,30 +201,37 @@ function formatForSunburst(node: SunburstNode): CategoryNode {
  * 2. Enrich with spending calculations
  * 3. Format with colors for visualization
  */
-export function useBudgetSunburstData(
-  budgets: BudgetAllocation[],
-  transactions: Transaction[],
-  viewDate: Date,
-  periodType: PeriodType,
-  normalizationMode: NormalizationMode
-): {
+export function useBudgetSunburstData(): {
   data: CategoryNode;
   isLoading: boolean;
 } {
+  const facade = useContext(BudgetManagerContext);
+  const viewDate = useAppStore((state: AppState) => state.viewDate)
+  const allBudgets = useAppStore((state: AppState) => state.budgetList)
+  const periodType = useAppStore((state: AppState) => state.periodType)
+  const normalizationMode = useAppStore((state: AppState) => state.normalizationMode)
+
+  
+  const { transactions, isLoading } = useTransactions() 
+  const { isLoading: isLoadingBudgets } = useBudgetQuery();
   const data = useMemo(() => {
     // Filter to standard budgets only
-    // Use shared filtering utility
-    const filteredBudgets = filterBudgetsByMode(budgets, periodType, normalizationMode, viewDate);
+    // Use shared filtering utility attached to the facade 
+    // NOTE add dummy budgets parameter
+    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate), allBudgets);
 
-    // Normalize budget amounts based on view and mode
+    // Normalize budget amounts based on view and mode and strip warnings
+    // for building the standard tree
     const normalizedBudgets = filteredBudgets.map(b => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { warnings, ...standardProps } = b;
       let amount = parseFloat(b.amount as string);
       
       if (normalizationMode === 'pro-rated' && 'frequency' in b) {
         amount = normalizeBudgetAmount(amount, b.frequency, periodType);
       }
       
-      return { ...b, amount: amount.toString() };
+      return { ...standardProps, amount: amount.toString() };
     });
 
     // Build the category tree
@@ -241,13 +251,14 @@ export function useBudgetSunburstData(
     // Three-step pipeline
     const rawTree = buildBudgetTree(validBudgets);
     const { node: enrichedTree } = enrichWithSpending(rawTree, spentAmounts);
-    const visualizationData = formatForSunburst(enrichedTree);
+    const sunburstTree = formatForSunburst(enrichedTree);
 
-    return visualizationData;
-  }, [budgets, transactions, viewDate, periodType, normalizationMode]);
+    return sunburstTree;
+
+  }, [facade, transactions, viewDate, periodType, normalizationMode, allBudgets]);
 
   return {
     data,
-    isLoading: false
+    isLoading: isLoading || isLoadingBudgets,
   };
 }

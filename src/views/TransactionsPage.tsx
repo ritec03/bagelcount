@@ -9,7 +9,7 @@ import { columns } from "./transactions/columns"
 import type { TransactionRow } from "./transactions/columns"
 import type { Transaction } from "@/lib/api/types.gen"
 import { getTransactionsApiV1TransactionsGet } from "@/lib/api/sdk.gen"
-import { calculateTransactionAmount } from "@/lib/transactionUtils"
+import { calculateTransactionAmount } from "@/lib/transactions/transactionUtils"
 
 // Real API call
 async function fetchTransactions(accountId: string, startDate?: string, endDate?: string): Promise<Transaction[]> {

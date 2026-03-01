@@ -3,9 +3,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createBudgetApiV1BudgetsPost as createBudget } from "../../lib/api/sdk.gen";
-import type { BudgetSubmission } from "../../lib/types";
+import type { BudgetSubmission } from "../../lib/models/types";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useBudgets } from "../../hooks/useBudgets";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useBudgetValidation } from "../../hooks/useBudgetValidation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,8 +40,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { budgetSchema, type BudgetFormValues } from "@/lib/schemas";
+import { cn } from "@/lib/utils/utils";
+import { budgetSchema, type BudgetFormValues } from "@/lib/models/schemas";
 
 // Type-safe mapper for initialData
 function mapInitialDataToFormValues(
@@ -84,11 +83,10 @@ function mapInitialDataToFormValues(
 }
 
 interface BudgetFormProps {
-  onSuccess?: () => void;
   initialData?: BudgetSubmission | null;
 }
 
-export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
+export function BudgetForm({ initialData }: BudgetFormProps) {
   const defaultValues = mapInitialDataToFormValues(initialData);
   const initialType = defaultValues.type || "StandardBudget";
 
@@ -112,25 +110,24 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
     setValue("type", type);
   };
 
-  // Retrieve current budgets for validation context
-  const { budgets } = useBudgets();
-  
+  // Retrieve current budgets
   // Watch form fields for real-time validation
   // eslint-disable-next-line react-hooks/incompatible-library -- watch() from react-hook-form cannot be memoized, this is expected behavior
   const watchedAccount = watch("account");
   const watchedAmount = watch("amount");
   const watchedType = watch("type");
-  
   const watchedFrequency = watch("frequency");
+  const watchedStartDate = watch("start_date");
   
   // Real-time validation hook
   const validation = useBudgetValidation(
-    budgets,
     watchedAccount || "",
     parseFloat(watchedAmount) || 0,
     watchedType || "StandardBudget",
-    watchedFrequency
-  ); 
+    watchedFrequency,
+    watchedStartDate,
+    initialData && 'id' in initialData ? initialData.id : undefined,
+  );
 
   const onSubmit = async (data: BudgetFormValues) => {
     try {
@@ -153,6 +150,7 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
       let payload: BudgetSubmission;
       
       const base = {
+        id: initialData && 'id' in initialData ? initialData.id : crypto.randomUUID(),
         account: data.account,
         amount: data.amount, 
         currency: data.currency,
@@ -163,7 +161,8 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
       if (data.type === "StandardBudget") {
         payload = {
             ...base,
-            frequency: data.frequency as "monthly" | "quarterly" | "yearly",
+            frequency: data.frequency,
+            end_date: null,
         };
       } else {
         payload = {
@@ -175,7 +174,6 @@ export function BudgetForm({ onSuccess, initialData }: BudgetFormProps) {
       // API Call
       await createBudget({ body: payload });
       
-      if (onSuccess) onSuccess();
       
     } catch (err) {
       console.error(err);

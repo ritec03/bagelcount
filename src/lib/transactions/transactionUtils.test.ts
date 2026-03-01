@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateTransactionAmount } from "@/lib/transactionUtils";
+import { calculateTransactionAmount } from "@/lib/transactions/transactionUtils";
 import type { Transaction } from "@/lib/api/types.gen";
 
 describe("calculateTransactionAmount", () => {

@@ -10,7 +10,11 @@ import { BudgetForm } from "./BudgetForm";
 import { BudgetCard } from "./BudgetCard";
 import { CollapsedPlaceholder } from "./CollapsedPlaceholder";
 import { useBudgetList } from "../../hooks/useBudgetList";
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import type { BudgetAllocation, PeriodType } from '@/lib/models/types';
+import { useBudgetQuery } from "../../hooks/useBudgetQuery";
+import { formatViolationWarnings } from "../../lib/budgets/constraints/constraintMessages";
+import { useAppStore, type AppState } from "@/hooks/store";
+// import { useContext } from 'react';
 
 // The "Beancount Safe" Approach
 function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: string, endDate: string} {
@@ -38,15 +42,6 @@ function getPeriodDates(viewDate: Date, periodType: PeriodType): {startDate: str
             endDate: toBeancountString(year, 11, 31) 
         };
     }
-}
-
-interface BudgetListProps {
-    budgets: BudgetAllocation[];
-    isLoading: boolean;
-    onBudgetChange: () => void;
-    viewDate: Date;
-    periodType: PeriodType;
-    normalizationMode: NormalizationMode;
 }
 
 function BudgetListSkeleton() {
@@ -84,33 +79,29 @@ function EmptyState() {
     );
 }
 
-export function BudgetList({ 
-    budgets, 
-    isLoading, 
-    onBudgetChange,
-    viewDate,
-    periodType,
-    normalizationMode
-}: BudgetListProps) {
+export function BudgetList() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<BudgetAllocation | null>(null);
     const navigate = useNavigate();
+
+    const allBudgets = useAppStore((state: AppState) => state.budgetList)
+    const viewDate = useAppStore((state: AppState) => state.viewDate)
+    const periodType = useAppStore((state: AppState) => state.periodType)
+
+    const { isLoading } = useBudgetQuery();
 
     // Use custom hook for logic
     const { 
         filteredBudgets, 
         renderItems, 
-        validationResults, 
         spentAmounts,
         collapsedIds,
-        toggleCollapse 
-    } = useBudgetList(budgets, viewDate, periodType, normalizationMode);
+        toggleCollapse
+    } = useBudgetList(
+      allBudgets,
+    );
+    console.groupEnd();
 
-    const handleSuccess = () => {
-        setIsDialogOpen(false);
-        setEditingBudget(null);
-        onBudgetChange();
-    };
 
     const openCreate = () => {
         setEditingBudget(null);
@@ -155,15 +146,17 @@ export function BudgetList({
                         const budget = item.budget;
                         const isExpanded = !collapsedIds.has(item.fullPath);
                         
-                        let validationError = null;
+                        //  TOOD validationError not used anymore
+                        const validationError = null;
                         let validationWarnings: string[] = [];
-                        
-                        if ("frequency" in budget) {
-                            const key = `${budget.account}:${budget.frequency}`;
-                            const result = validationResults.get(key);
-                            if (result) {
-                                validationError = result.error;
-                                validationWarnings = result.warnings;
+
+
+                        // TODO add back warning/invalid distinction late if necessary
+                        if (allBudgets && "id" in budget) {
+                            const facadeBudget = allBudgets.find(fb => fb.id === budget.id);
+                            if (facadeBudget) {
+                                const facadeWarnings = formatViolationWarnings(facadeBudget.warnings);
+                                validationWarnings = [...validationWarnings, ...facadeWarnings];
                             }
                         }
 
@@ -177,8 +170,6 @@ export function BudgetList({
                                         navigate(`/transactions/${budget.account}?startDate=${startDate}&endDate=${endDate}`);
                                     }}
                                     onEdit={() => openEdit(budget)}
-                                    periodType={periodType}
-                                    normalizationMode={normalizationMode}
                                     validationError={validationError}
                                     validationWarnings={validationWarnings}
                                     color={item.color}
@@ -201,7 +192,6 @@ export function BudgetList({
                         </DialogTitle>
                     </DialogHeader>
                     <BudgetForm 
-                        onSuccess={handleSuccess} 
                         initialData={editingBudget}
                     />
                 </DialogContent>
@@ -209,4 +199,3 @@ export function BudgetList({
         </div>
     );
 }
-

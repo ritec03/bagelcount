@@ -4,9 +4,11 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { normalizeBudgetAmount } from '@/lib/budgetCalculations';
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import { cn } from "@/lib/utils/utils";
+import type { BudgetAllocation } from '@/lib/models/types';
+import { useContext } from "react";
+import { BudgetManagerContext } from "../context";
+import { useAppStore, type AppState } from "@/hooks/store";
 
 /**
  * Props for the BudgetCard component.
@@ -20,10 +22,6 @@ export interface BudgetCardProps {
     onClick: () => void;
     /** Handler for clicking the edit button */
     onEdit: () => void;
-    /** Period type (Monthly/Yearly) for display context */
-    periodType: PeriodType;
-    /** Normalization mode used for calculations */
-    normalizationMode: NormalizationMode;
     /** Validation error message if any */
     validationError?: string | null;
     /** Validation warnings if any */
@@ -53,21 +51,27 @@ export function BudgetCard({
     spentAmount, 
     onClick, 
     onEdit,
-    periodType, 
-    normalizationMode, 
     validationError, 
     validationWarnings, 
     color,
     isGroup,
     isExpanded,
-    onToggle
+    onToggle,
 }: BudgetCardProps) {
     const isStandard = "frequency" in budget;
     let budgetAmount = parseFloat(budget.amount);
+
+    const facade = useContext(BudgetManagerContext);
+    const periodType = useAppStore((state: AppState) => state.periodType)
+    const normalizationMode = useAppStore((state: AppState) => state.normalizationMode)
     
     // Apply normalization if standard budget and pro-rated mode
-    if (isStandard && normalizationMode === 'pro-rated') {
-        budgetAmount = normalizeBudgetAmount(budgetAmount, budget.frequency, periodType);
+    if (isStandard && normalizationMode === 'pro-rated' && facade) {
+        budgetAmount = facade.normalizeAmount(
+            budgetAmount, 
+            budget.frequency, 
+            periodType
+        );
     }
 
     const percentageSpent = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;

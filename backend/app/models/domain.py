@@ -26,6 +26,7 @@ class Transaction(BaseModel):
 
 
 class BaseBudget(BaseModel):
+    id: str
     account: str
     amount: Decimal
     currency: str = "CAD"  # TODO remove default value here
@@ -36,6 +37,7 @@ class BaseBudget(BaseModel):
 
 class StandardBudget(BaseBudget):
     frequency: Literal["monthly", "quarterly", "yearly"]
+    end_date: date | None = None
 
 
 class CustomBudget(BaseBudget):

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import type { BudgetAllocation, StandardBudgetOutput } from '@/lib/types';
-import { buildBudgetTree, flattenBudgetTree, type HierarchyItem } from '@/lib/budgetTree';
+import type { BudgetAllocation, StandardBudgetOutput } from '@/lib/models/types';
+import { buildBudgetTree, flattenBudgetTree, type HierarchyItem } from '@/lib/budgetUiTree';
 
 /**
  * Hook to organize flat budget list into a hierarchical, sorted structure.

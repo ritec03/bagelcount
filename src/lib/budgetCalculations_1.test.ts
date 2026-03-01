@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePeriodSpent } from './budgetCalculations';
 import type { Transaction } from './api/types.gen';
-import type { BudgetAllocation } from './types';
+import type { BudgetAllocation } from './models/types';
 
 describe('Budget Calculations - Edge Cases', () => {
   describe('Test #1: Malformed Date Strings (+15 pts)', () => {
@@ -12,7 +12,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const transactions: Transaction[] = [{
@@ -37,7 +37,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
 
       const transactions: Transaction[] = [{
@@ -61,7 +61,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
 
       const transactions: Transaction[] = [{
@@ -88,7 +88,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       // Transaction on the last day of January
@@ -118,7 +118,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const transactions: Transaction[] = [{
@@ -152,7 +152,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
       
       const transactions: Transaction[] = [{
@@ -176,7 +176,7 @@ describe('Budget Calculations - Edge Cases', () => {
         amount: '500.00',
         currency: 'CAD',
         start_date: '2026-01-01',
-        frequency: 'monthly'
+        frequency: 'monthly', id: 'test-id', end_date: null
       }];
 
       const transactions: Transaction[] = [{

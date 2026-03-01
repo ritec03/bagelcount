@@ -1,5 +1,5 @@
-import type { StandardBudgetOutput, BudgetAllocation } from './types';
-import { generateVibrantColor } from './colorUtils';
+import type { StandardBudgetOutput, BudgetAllocation } from './models/types';
+import { generateVibrantColor } from './utils/colorUtils';
 
 // ============================================================================
 // Types

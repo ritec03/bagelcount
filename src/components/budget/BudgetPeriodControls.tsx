@@ -2,25 +2,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Calculator, Calendar } from "lucide-react";
-import type { PeriodType, NormalizationMode } from '@/lib/types';
+import type { PeriodType } from '@/lib/models/types';
+import { useAppStore, type AppState } from "@/hooks/store";
 
-interface BudgetPeriodControlsProps {
-  viewDate: Date;
-  onDateChange: (date: Date) => void;
-  periodType: PeriodType;
-  onPeriodChange: (type: PeriodType) => void;
-  normalizationMode: NormalizationMode;
-  onNormalizationChange: (mode: NormalizationMode) => void;
-}
-
-export function BudgetPeriodControls({
-  viewDate,
-  onDateChange,
-  periodType,
-  onPeriodChange,
-  normalizationMode,
-  onNormalizationChange
-}: BudgetPeriodControlsProps) {
+export function BudgetPeriodControls() {
+  const viewDate = useAppStore((state: AppState) => state.viewDate)
+  const onDateChange = useAppStore((state: AppState) => state.setViewDate)
+  const periodType = useAppStore((state: AppState) => state.periodType)
+  const setPeriodType = useAppStore((state: AppState) => state.setPeriodType)
+  const normalizationMode = useAppStore((state: AppState) => state.normalizationMode)
+  const setNormalizationMode = useAppStore((state: AppState) => state.setNormalizationMode)
   
   const handlePrevious = () => {
     const newDate = new Date(viewDate);
@@ -63,7 +54,7 @@ export function BudgetPeriodControls({
         <div className="flex items-center gap-2">
           <Select 
             value={periodType} 
-            onValueChange={(val: PeriodType) => onPeriodChange(val)}
+            onValueChange={(val: PeriodType) => setPeriodType(val)}
           >
             <SelectTrigger className="w-40">
               <Calendar className="mr-2 h-4 w-4" />
@@ -102,7 +93,7 @@ export function BudgetPeriodControls({
           <span className="text-sm text-muted-foreground hidden sm:inline">Budget View:</span>
           <Select 
             value={normalizationMode} 
-            onValueChange={(val) => onNormalizationChange(val as 'pro-rated' | 'full')}
+            onValueChange={(val) => setNormalizationMode(val as 'pro-rated' | 'full')}
           >
             <SelectTrigger className="w-48">
               <Calculator className="mr-2 h-4 w-4" />

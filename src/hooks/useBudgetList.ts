@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { filterBudgetsByMode } from '@/lib/budgetCalculations';
+import { useContext, useState } from "react";
 import { useBudgetSpentAmounts } from '@/hooks/useBudgetSpentAmounts';
 import { useBudgetHierarchy } from '@/hooks/useBudgetHierarchy';
-import { useBudgetListValidation } from '@/hooks/useBudgetListValidation';
-import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/types';
+import { NaiveDate } from '@/lib/utils/dateUtil';
+import { BudgetManagerContext } from "@/components/context";
+import type { ExtendedBudget } from "@/lib/budgets/service/budgetManagerInterface";
+import { useAppStore, type AppState } from "./store";
 
 /**
  * Custom hook to manage the logic for the BudgetList component.
@@ -13,19 +14,14 @@ import type { BudgetAllocation, PeriodType, NormalizationMode } from '@/lib/type
  * - Calculating spent amounts and validation results.
  * - Managing hierarchy and collapse state.
  * - Flattening the hierarchy into a renderable list with "Placeholder" items for collapsed groups.
- * 
- * @param budgets - List of all budget allocations.
- * @param viewDate - Current view date.
- * @param periodType - Period type (monthly/yearly).
- * @param normalizationMode - Mode for standardizing budget amounts.
+ * @param facadeResult - The full facade result object.
+ * // TODO keep docs for other params too
  * @returns Object containing filtered data, render items, validation results, and handlers.
  */
 export function useBudgetList(
-    budgets: BudgetAllocation[],
-    viewDate: Date,
-    periodType: PeriodType,
-    normalizationMode: NormalizationMode
+    facadeBudgets: ExtendedBudget[],
 ) {
+    const viewDate = useAppStore((state: AppState) => state.viewDate)
     // State for collapsed groups (using fullPath)
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
 
@@ -39,14 +35,13 @@ export function useBudgetList(
         setCollapsedIds(newCollapsed);
     };
 
-    // Filter budgets based on normalization mode using shared utility
-    const filteredBudgets = filterBudgetsByMode(budgets, periodType, normalizationMode, viewDate);
+    const periodType = useAppStore((state: AppState) => state.periodType)
 
+    // Filter budgets based on normalization mode using shared utility
+    const facade = useContext(BudgetManagerContext);
+    const filteredBudgets = facade.getActiveBudgets(periodType, NaiveDate.fromDate(viewDate), facadeBudgets);
     // Calculate spent amounts using custom hook
     const spentAmounts = useBudgetSpentAmounts(filteredBudgets, viewDate, periodType);
-
-    // Pre-compute validation results for all standard budgets (memoized)
-    const validationResults = useBudgetListValidation(budgets);
 
     // Compute hierarchy
     const hierarchyItems = useBudgetHierarchy(filteredBudgets);
@@ -113,7 +108,6 @@ export function useBudgetList(
     return {
         filteredBudgets,
         renderItems,
-        validationResults,
         spentAmounts,
         collapsedIds,
         toggleCollapse

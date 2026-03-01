@@ -17,6 +17,7 @@ def test_create_budget():
 
     # Payload matching StandardBudget
     payload = {
+        "id": "new-budget-id-123",
         "account": "Expenses:Food",
         "amount": "500.00",
         "currency": "USD",
@@ -59,6 +60,7 @@ def test_get_budgets():
     from decimal import Decimal
 
     mock_budget = StandardBudget(
+        id="mock-id-123",
         account="Expenses:Food",
         amount=Decimal("100.00"),
         start_date=date(2024, 1, 1),
@@ -81,6 +83,7 @@ def test_get_budgets():
 def test_create_budget_validation_error():
     """Verify 422 if neither frequency nor end_date is provided."""
     payload = {
+        "id": "invalid-budget-id",
         "account": "Expenses:Food",
         "amount": "500.00",
         "currency": "USD",

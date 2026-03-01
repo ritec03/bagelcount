@@ -176,6 +176,7 @@ def test_write_operation_invalidates_cache(temp_beancount_files):
     service.load()
 
     budget = StandardBudget(
+        id="budget-1",
         account="Expenses:Food",
         amount=100,
         currency="USD",
@@ -314,6 +315,7 @@ def test_add_budget_writes_to_segregated_file(tmp_path):
     service = BeancountService(str(main_file), budget_file=str(budget_file))
 
     allocation = StandardBudget(
+        id="budget-2",
         account="Expenses:Food",
         amount=Decimal("500.00"),
         currency="USD",
