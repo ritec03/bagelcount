@@ -36,21 +36,21 @@ function rawBudget(
 
 /** ConstraintConfig presets */
 const ALL_DISABLED: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
+  ParentChildrenSum: { parent: 'disabled', child_same_freq: 'disabled', child_lower_freq: 'disabled', child_higher_freq: 'disabled' },
 };
 
 const ALL_WARNING: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'warning', child: 'warning' },
+  ParentChildrenSum: { parent: 'warning', child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' },
 };
 
 /** Only the parent node gets a warning; child warnings are suppressed. */
 const PARENT_WARNING_ONLY: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'warning', child: 'disabled' },
+  ParentChildrenSum: { parent: 'warning', child_same_freq: 'disabled', child_lower_freq: 'disabled', child_higher_freq: 'disabled' },
 };
 
 /** Only the child nodes get a warning; parent warning is suppressed. */
 const CHILD_WARNING_ONLY: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'disabled', child: 'warning' },
+  ParentChildrenSum: { parent: 'disabled', child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ describe('BudgetFacade.initializeBudgets', () => {
 
   // ── (M) ParentChildrenSum constraint ──────────────────────────────────────
   // A single constraint governing both the parent and child roles.
-  // Config: { parent: mode, child: mode } — each role is independently toggled.
+  // Config: { parent: mode, child_*: mode } — each role is independently toggled.
   // Fires when children collectively EXCEED the parent budget amount.
 
   describe('(M) ParentChildrenSum constraint — parent role', () => {
@@ -288,10 +288,12 @@ describe('BudgetFacade.initializeBudgets', () => {
       for (const childId of ['c1', 'c2']) {
         const childResult = results.find((r) => r.id === childId)!;
         expect(childResult.warnings.ParentChildrenSum).toBeDefined();
-        const childWarning = childResult.warnings.ParentChildrenSum!.find((w) => w.role === 'child');
+        const childWarning = childResult.warnings.ParentChildrenSum!.find((w) => w.role.startsWith('child_'));
         expect(childWarning).toBeDefined();
-        expect(childWarning!.role).toBe('child');
-        expect(childWarning!.parentId).toBe('p');
+        expect(childWarning!.role.startsWith('child_')).toBe(true);
+        if (childWarning!.role !== 'parent') {
+          expect(childWarning!.parentId).toBe('p');
+        }
       }
     });
 
@@ -303,7 +305,7 @@ describe('BudgetFacade.initializeBudgets', () => {
 
       const results = facade.initializeBudgets([parent, child], PARENT_WARNING_ONLY);
       const childResult = results.find((r) => r.id === 'c1')!;
-      const childWarning = childResult.warnings.ParentChildrenSum?.find((w) => w.role === 'child');
+      const childWarning = childResult.warnings.ParentChildrenSum?.find((w) => w.role.startsWith('child_'));
       expect(childWarning).toBeUndefined();
     });
   });
@@ -340,7 +342,7 @@ describe('BudgetFacade.initializeBudgets', () => {
 
       const warnings = parentResult.warnings.ParentChildrenSum ?? [];
       // parent exceeds gp → parent has a child-role warning
-      expect(warnings.some((w) => w.role === 'child')).toBe(true);
+      expect(warnings.some((w) => w.role.startsWith('child_'))).toBe(true);
       // child exceeds parent → parent has a parent-role warning
       expect(warnings.some((w) => w.role === 'parent')).toBe(true);
     });

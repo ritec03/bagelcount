@@ -26,19 +26,20 @@ import { createBudgetFacade as _createBudgetFacade } from '@/lib/budgets/service
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ALL_DISABLED: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'disabled', child: 'disabled' },
+  ParentChildrenSum: { parent: 'disabled', child_same_freq: 'disabled', child_lower_freq: 'disabled', child_higher_freq: 'disabled' },
 };
 
 const ALL_WARNING: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'warning', child: 'warning' },
+  ParentChildrenSum: { parent: 'warning', child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' },
 };
 
 const ALL_BLOCKING: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'blocking', child: 'blocking' },
+  ParentChildrenSum: { parent: 'blocking', child_same_freq: 'blocking', child_lower_freq: 'blocking', child_higher_freq: 'blocking' },
 };
 
+/** Parent role blocks, child role only warns. */
 const PARENT_BLOCKING_CHILD_WARNING: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'blocking', child: 'warning' },
+  ParentChildrenSum: { parent: 'blocking', child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' },
 };
 
 type RawOverride = Partial<StandardBudgetOutput> & {
@@ -174,7 +175,7 @@ describe('BudgetFacade.updateBudget', () => {
       const { updates } = asSuccess(facade.updateBudget('c', { id: 'c', amount: '1200' }));
       const child = updates['c'];
       expect(child.warnings.ParentChildrenSum).toBeDefined();
-      expect(child.warnings.ParentChildrenSum!.some((w) => w.role === 'child')).toBe(true);
+      expect(child.warnings.ParentChildrenSum!.some((w) => w.role.startsWith('child_'))).toBe(true);
     });
   });
 

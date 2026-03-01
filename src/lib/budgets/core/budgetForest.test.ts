@@ -48,7 +48,7 @@ import type { ConstraintConfig } from '../constraints/constraints';
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const CONFIG: ConstraintConfig = {
-  ParentChildrenSum: { parent: 'warning', child: 'blocking' },
+  ParentChildrenSum: { parent: 'warning', child_same_freq: 'blocking', child_lower_freq: 'warning', child_higher_freq: 'blocking' },
 };
 
 let idCounter = 0;

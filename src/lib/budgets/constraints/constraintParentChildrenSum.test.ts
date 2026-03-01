@@ -43,10 +43,10 @@ function node(label: string, instances: BudgetInstance[], children: BudgetTreeNo
 
 type PCSConfig = ConstraintRegistry['ParentChildrenSum']['Config'];
 
-const ALL_WARNING:  PCSConfig = { parent: 'warning',  child: 'warning'  };
-const ALL_DISABLED: PCSConfig = { parent: 'disabled', child: 'disabled' };
-const PARENT_ONLY:  PCSConfig = { parent: 'warning',  child: 'disabled' };
-const CHILD_ONLY:   PCSConfig = { parent: 'disabled', child: 'warning'  };
+const ALL_WARNING:  PCSConfig = { parent: 'warning',  child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' };
+const ALL_DISABLED: PCSConfig = { parent: 'disabled', child_same_freq: 'disabled', child_lower_freq: 'disabled', child_higher_freq: 'disabled' };
+const PARENT_ONLY:  PCSConfig = { parent: 'warning',  child_same_freq: 'disabled', child_lower_freq: 'disabled', child_higher_freq: 'disabled' };
+const CHILD_ONLY:   PCSConfig = { parent: 'disabled', child_same_freq: 'warning', child_lower_freq: 'warning', child_higher_freq: 'warning' };
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -95,10 +95,12 @@ describe('checkParentChildrenSum', () => {
 
       const result = checkParentChildrenSum(parent, ALL_WARNING);
 
-      const childWarning = result.ParentChildrenSum!.find(w => w.role === 'child');
+      const childWarning = result.ParentChildrenSum!.find(w => w.role.startsWith('child_'));
       expect(childWarning).toBeDefined();
-      expect(childWarning!.parentId).toBe('p1');
-      expect(childWarning!.budgetId).toBe('c1');
+      if (childWarning!.role !== 'parent') {
+        expect(childWarning!.parentId).toBe('p1');
+        expect(childWarning!.budgetId).toBe('c1');
+      }
     });
   });
 
@@ -126,7 +128,7 @@ describe('checkParentChildrenSum', () => {
 
       const result = checkParentChildrenSum(parent, ALL_WARNING);
 
-      const childWarnings = result.ParentChildrenSum!.filter(w => w.role === 'child');
+      const childWarnings = result.ParentChildrenSum!.filter(w => w.role.startsWith('child_'));
       const childIds = childWarnings.map(w => w.budgetId);
       expect(childIds).toContain('c1');
       expect(childIds).toContain('c2');
@@ -178,7 +180,7 @@ describe('checkParentChildrenSum', () => {
 
       const result = checkParentChildrenSum(parent, PARENT_ONLY);
       // parent warning should exist, but NOT child warning
-      const childWarn = result.ParentChildrenSum?.find(w => w.role === 'child');
+      const childWarn = result.ParentChildrenSum?.find(w => w.role.startsWith('child_'));
       expect(childWarn).toBeUndefined();
     });
 
