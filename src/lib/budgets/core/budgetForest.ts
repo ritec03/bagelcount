@@ -42,17 +42,25 @@ export abstract class ABudgetForest {
 const PERIOD_HIERARCHY: readonly PeriodType[] = ['yearly', 'quarterly', 'monthly'];
 
 /**
- * The period-chain suffix appended to an account label in the unified tree.
+ * The period-chain suffix appended to a **leaf** account segment in the unified tree.
  *
- * A monthly budget at `Expenses:Food` becomes `Expenses:Food:yearly:quarterly:monthly`
- * so that yearly is always an ancestor of quarterly, which is always an ancestor
- * of monthly, for every account node.
+ * Every **intermediate** account segment always gets the full chain
+ * `yearly:quarterly:monthly`, so that child accounts nest inside the
+ * parent account's period nodes.
+ *
+ * Leaf suffix by period:
+ *   yearly    → [:yearly]
+ *   quarterly → [:yearly:quarterly]
+ *   monthly   → [:yearly:quarterly:monthly]
  */
 const PERIOD_PATH_SUFFIX: Record<PeriodType, readonly PeriodType[]> = {
   yearly:    ['yearly'],
   quarterly: ['yearly', 'quarterly'],
   monthly:   ['yearly', 'quarterly', 'monthly'],
 };
+
+/** Full chain inserted after every intermediate account segment. */
+const FULL_PERIOD_CHAIN: readonly PeriodType[] = ['yearly', 'quarterly', 'monthly'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Concrete implementation
@@ -125,8 +133,22 @@ export class BudgetForest extends ABudgetForest {
     return new BudgetForest(nextTrees, this.#config);
   }
 
-  tryInsert(_period: PeriodType, _label: AccountLabel, _inst: BudgetInstance): BudgetForestOperationResult {
-    throw new Error("BudgetForest.tryInsert: not implemented");
+  tryInsert(period: PeriodType, label: AccountLabel, inst: BudgetInstance): BudgetForestOperationResult {
+    const tentativeForest = this.insertBudget(period, label, inst);
+    const violationsMap   = tentativeForest.validateAll();
+
+    // Split all violations into blocking (errors) vs non-blocking (warnings).
+    const { errors, warnings } = partitionViolations(violationsMap, this.#config);
+
+    const hasBlockingError =
+      (errors.ParentChildrenSum?.length ?? 0) > 0;
+
+    if (hasBlockingError) {
+      return { success: false, errors, warnings };
+    }
+
+    // No blocking violation — commit the tentative forest.
+    return { success: true, forest: tentativeForest, updates: {} };
   }
 
   tryUpdate(
@@ -162,8 +184,6 @@ export class BudgetForest extends ABudgetForest {
     return result;
   }
 
-  // TODO: create a method that traverses the tree and adds amounts to ghost nodes
-  // so that all nodes have amounts
   /**
    * Build a single {@link BudgetTree} that unifies all period-specific trees.
    *
@@ -209,8 +229,24 @@ export class BudgetForest extends ABudgetForest {
       if (tree === undefined) continue;
 
       for (const { label, inst } of collectBudgetsWithLabels(tree.root)) {
-        const extendedPath = [...label, ...PERIOD_PATH_SUFFIX[period]].join(':');
-        unified = unified.insert(makeAccountLabel(extendedPath), inst);
+        // Build the interleaved path:
+        //   Each INTERMEDIATE account segment gets the full period chain
+        //   (yearly:quarterly:monthly) so child accounts nest inside parent
+        //   period nodes.
+        //   The LEAF segment gets only the period-specific suffix.
+        //
+        // Example: Expenses:Food (monthly)
+        //   → Expenses : yearly:quarterly:monthly : Food : yearly:quarterly:monthly
+        const pathParts: string[] = [];
+        for (let i = 0; i < label.length; i++) {
+          pathParts.push(label[i]!);
+          if (i < label.length - 1) {
+            pathParts.push(...FULL_PERIOD_CHAIN);
+          } else {
+            pathParts.push(...PERIOD_PATH_SUFFIX[period]);
+          }
+        }
+        unified = unified.insert(makeAccountLabel(pathParts.join(':')), inst);
       }
     }
 
@@ -242,4 +278,46 @@ function collectBudgetsWithLabels(
     result.push(...collectBudgetsWithLabels(child));
   }
   return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// tryInsert helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Split every entry in `violationsMap` into violations whose configured mode is
+ * `'blocking'` (returned as `errors`) and those whose mode is `'warning'`
+ * (returned as `warnings`).  `'disabled'` violations are never present in the
+ * map so they don't need special handling.
+ *
+ * A violation's mode is determined by the role it carries and the config for
+ * that role — e.g. a `role:'parent'` violation is blocking when
+ * `config.ParentChildrenSum.parent === 'blocking'`.
+ */
+function partitionViolations(
+  violationsMap: ConstraintViolationMap,
+  config: ConstraintConfig,
+): { errors: ConstraintViolationMap; warnings: ConstraintViolationMap } {
+  const errors:   ConstraintViolationMap = {};
+  const warnings: ConstraintViolationMap = {};
+
+  const pcs = violationsMap.ParentChildrenSum;
+  if (pcs !== undefined && pcs.length > 0) {
+    const errList:  typeof pcs = [];
+    const warnList: typeof pcs = [];
+
+    for (const v of pcs) {
+      const mode = config.ParentChildrenSum[v.role];
+      if (mode === 'blocking') {
+        errList.push(v);
+      } else {
+        warnList.push(v);
+      }
+    }
+
+    if (errList.length  > 0) (errors  as Record<string, unknown>)['ParentChildrenSum'] = errList;
+    if (warnList.length > 0) (warnings as Record<string, unknown>)['ParentChildrenSum'] = warnList;
+  }
+
+  return { errors, warnings };
 }

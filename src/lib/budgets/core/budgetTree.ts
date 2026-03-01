@@ -1,6 +1,6 @@
 import type { AccountLabel } from "./accountLabel";
 import type { BudgetInstance } from "./budgetInstance";
-import { deleteBudget, insertBudget, BudgetTreeNode } from "./budgetNode";
+import { deleteBudget, insertBudget, BudgetTreeNode, type TreeNode } from "./budgetNode";
 import { mergeViolations, type Constraint, type ConstraintCheckerMap, type ConstraintConfig, type ConstraintViolationMap } from "../constraints/constraints";
 import { checkParentChildrenSum } from "../constraints/constraintParentChildrenSum";
 import type { DateRange } from "../../utils/dateRange";
@@ -75,7 +75,7 @@ export class BudgetTree {
  * Recursively collect violations from `node` and all its descendants.
  */
 function collectViolations(
-  node: BudgetTreeNode,
+  node: TreeNode,
   configs: ConstraintConfig,
 ): ConstraintViolationMap {
   // Iterate by configs keys so configs is the authoritative source of what to check.

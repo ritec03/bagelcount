@@ -1,73 +1,69 @@
 /**
  * Test suite for {@link BudgetForest.buildUnifiedTree}
  *
- * ╔══════════════════════════════════════════════════════════════════════╗
- * ║  WHAT buildUnifiedTree() DOES                                        ║
- * ║                                                                      ║
- * ║  It merges all per-period trees into ONE BudgetTree by extending     ║
- * ║  each budget's account path with a period-hierarchy suffix:          ║
- * ║                                                                      ║
- * ║    yearly    → <account>:yearly                                      ║
- * ║    quarterly → <account>:yearly:quarterly                            ║
- * ║    monthly   → <account>:yearly:quarterly:monthly                    ║
- * ║                                                                      ║
- * ║  The rule "bigger period = higher in tree" is enforced structurally: ║
- * ║  "yearly" is always an ancestor of "quarterly", which is always an   ║
- * ║  ancestor of "monthly" at every account node.                        ║
- * ╚══════════════════════════════════════════════════════════════════════╝
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║  NEW UNIFIED TREE STRUCTURE                                               ║
+ * ║                                                                           ║
+ * ║  Each account segment gets the FULL period chain (yearly:quarterly:       ║
+ * ║  monthly) inserted after it, except the leaf which gets only the          ║
+ * ║  period-specific suffix.                                                  ║
+ * ║                                                                           ║
+ * ║  KEY RULE:                                                                ║
+ * ║    Leaf segment  → PERIOD_PATH_SUFFIX[period]                             ║
+ * ║    Intermediate  → yearly:quarterly:monthly   (always full chain)         ║
+ * ║                                                                           ║
+ * ║  Examples:                                                                ║
+ * ║    Expenses         (yearly)  → Expenses:yearly                           ║
+ * ║    Expenses         (monthly) → Expenses:yearly:quarterly:monthly         ║
+ * ║    Expenses:Food    (yearly)  → Expenses:yearly:quarterly:monthly         ║
+ * ║                                  :Food:yearly                             ║
+ * ║    Expenses:Food    (monthly) → Expenses:yearly:quarterly:monthly         ║
+ * ║                                  :Food:yearly:quarterly:monthly           ║
+ * ║                                                                           ║
+ * ║  CRITICAL PROPERTY: child accounts nest INSIDE parent period nodes.       ║
+ * ║  Expenses:Food:monthly is a descendant of Expenses:monthly, so the        ║
+ * ║  constraint checker can reach it via collectClosestBudgets.               ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
- * ZOMBIES coverage plan:
- *   Z – Zero    : empty forest → null
- *   O – One     : single budget per period type
- *   M – Many    : same account across periods; parent + child accounts
- *   B – Boundary: top-level single-segment account; sibling accounts
- *   I – Interface: return type is BudgetTree; extended label structure correct
- *   E – Exceptions/Edge: only nodes that hold budgets (or are on the path
- *                         to a budget) appear in the unified tree
- *   S – Simple  : covered by Zero and One cases
+ * ZOMBIES coverage:
+ *   Z – empty forest → null
+ *   O – single budget per period (single + multi-segment accounts)
+ *   M – multi-period same account; parent+child accounts across periods
+ *   B – single-segment account; sibling accounts
+ *   I – returns BudgetTree; instanceof checks
+ *   E – only yearly inserted → no quarterly/monthly below it
+ *   S – simplest non-trivial: single mono-segment account
  */
 
-import { describe, it, expect } from "vitest";
-import { BudgetForest } from "./budgetForest";
-import { BudgetInstance } from "./budgetInstance";
-import { BudgetTree } from "./budgetTree";
-import type { BudgetTreeNode } from "./budgetNode";
-import { makeAccountLabel, type AccountLabel } from "./accountLabel";
-import { DateRange } from "@/lib/utils/dateRange";
-import { NaiveDate } from "@/lib/utils/dateUtil";
-import type { ConstraintConfig } from "../constraints/constraints";
+import { describe, it, expect } from 'vitest';
+import { BudgetForest } from './budgetForest';
+import { BudgetInstance } from './budgetInstance';
+import { BudgetTree } from './budgetTree';
+import type { TreeNode } from './budgetNode';
+import { makeAccountLabel, type AccountLabel } from './accountLabel';
+import { DateRange } from '@/lib/utils/dateRange';
+import { NaiveDate } from '@/lib/utils/dateUtil';
+import type { ConstraintConfig } from '../constraints/constraints';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Test helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 const CONFIG: ConstraintConfig = {
-  ParentChildrenSum: { parent: "warning", child: "blocking" },
+  ParentChildrenSum: { parent: 'warning', child: 'blocking' },
 };
 
 let idCounter = 0;
-
-/** Create a minimal BudgetInstance with a given amount (open-ended range). */
 function makeBudget(amount: number): BudgetInstance {
-  const start = NaiveDate.fromString("2026-01-01");
+  const start = NaiveDate.fromString('2026-01-01');
   return new BudgetInstance(new DateRange(start, null), amount, `id-${++idCounter}`);
 }
 
-/**
- * Walk the unified tree and return the node whose full `accountLabel`
- * matches the given colon-separated path, or `undefined` if absent.
- *
- * Example: findNode(tree, "Expenses:Food:yearly:quarterly:monthly")
- */
-function findNode(tree: BudgetTree, path: string): BudgetTreeNode | undefined {
+/** Walk a unified BudgetTree to find the node at the given colon-separated path. */
+function findNode(tree: BudgetTree, path: string): TreeNode | undefined {
   const target = makeAccountLabel(path);
   return findNodeByLabel(tree.root, target);
 }
 
-function findNodeByLabel(
-  node: BudgetTreeNode,
-  target: AccountLabel,
-): BudgetTreeNode | undefined {
+function findNodeByLabel(node: TreeNode, target: AccountLabel): TreeNode | undefined {
   if (
     node.accountLabel.length === target.length &&
     node.accountLabel.every((seg, i) => seg === target[i])
@@ -82,333 +78,326 @@ function findNodeByLabel(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tests
-// ─────────────────────────────────────────────────────────────────────────────
 
-describe("BudgetForest.buildUnifiedTree()", () => {
+describe('BudgetForest.buildUnifiedTree()', () => {
+
   // ── Z: Zero ────────────────────────────────────────────────────────────────
 
-  it("Z – returns null for an empty forest", () => {
-    // Arrange
-    const forest = BudgetForest.createEmpty(CONFIG);
-    // Act / Assert
-    expect(forest.buildUnifiedTree()).toBeNull();
+  it('Z – returns null for an empty forest', () => {
+    expect(BudgetForest.createEmpty(CONFIG).buildUnifiedTree()).toBeNull();
   });
 
-  // ── S / O: Simple / One ────────────────────────────────────────────────────
+  // ── S / O: Simple / One — SINGLE-SEGMENT accounts ─────────────────────────
+  // For single-segment accounts intermediate logic never applies;
+  // the result is the same as before: Expenses:PERIOD_SUFFIX.
 
-  it("O – single yearly budget is placed at <account>:yearly", () => {
+  it('S – single-segment account yearly → Expenses:yearly', () => {
     /*
-     * Forest input:
-     *   yearly ──► Expenses:Food  ($12 000)
-     *
-     * Expected unified tree:
-     *
-     *   Expenses                   (ghost – root)
-     *   └── Food                   (ghost – no budget directly on the account)
-     *       └── yearly  ◄── $12 000 lives here
+     *   Expenses (root ghost)
+     *   └── yearly ◄── $12 000
      */
-    // Arrange
     const budget = makeBudget(12_000);
-    const forest = BudgetForest.createEmpty(CONFIG).insertBudget(
-      "yearly",
-      makeAccountLabel("Expenses:Food"),
-      budget,
-    );
-    // Act
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('yearly', makeAccountLabel('Expenses'), budget);
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert
-    const node = findNode(unified, "Expenses:Food:yearly");
+    const node = findNode(unified, 'Expenses:yearly');
     expect(node).toBeDefined();
-    expect(node!.budgets).toHaveLength(1);
     expect(node!.budgets[0]!.id).toBe(budget.id);
   });
 
-  it("O – single quarterly budget is placed at <account>:yearly:quarterly", () => {
+  it('O – single-segment account monthly → Expenses:yearly:quarterly:monthly', () => {
     /*
-     * Forest input:
-     *   quarterly ──► Expenses:Food  ($3 000)
-     *
-     * Expected unified tree:
-     *
      *   Expenses
-     *   └── Food
-     *       └── yearly        (ghost – period placeholder)
-     *           └── quarterly ◄── $3 000 lives here
+     *   └── yearly (ghost)
+     *       └── quarterly (ghost)
+     *           └── monthly ◄── $800
      */
-    // Arrange
-    const budget = makeBudget(3_000);
-    const forest = BudgetForest.createEmpty(CONFIG).insertBudget(
-      "quarterly",
-      makeAccountLabel("Expenses:Food"),
-      budget,
-    );
-    // Act
-    const unified = forest.buildUnifiedTree()!;
-    // Assert – ghost yearly node must exist
-    expect(findNode(unified, "Expenses:Food:yearly")).toBeDefined();
-    // Budget lives at quarterly depth
-    const node = findNode(unified, "Expenses:Food:yearly:quarterly");
-    expect(node).toBeDefined();
-    expect(node!.budgets).toHaveLength(1);
-    expect(node!.budgets[0]!.id).toBe(budget.id);
-  });
-
-  it("O – single monthly budget is placed at <account>:yearly:quarterly:monthly", () => {
-    /*
-     * Forest input:
-     *   monthly ──► Expenses:Food  ($800)
-     *
-     * Expected unified tree:
-     *
-     *   Expenses
-     *   └── Food
-     *       └── yearly          (ghost)
-     *           └── quarterly   (ghost)
-     *               └── monthly ◄── $800 lives here
-     */
-    // Arrange
     const budget = makeBudget(800);
-    const forest = BudgetForest.createEmpty(CONFIG).insertBudget(
-      "monthly",
-      makeAccountLabel("Expenses:Food"),
-      budget,
-    );
-    // Act
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('monthly', makeAccountLabel('Expenses'), budget);
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert – full ghost chain exists
-    expect(findNode(unified, "Expenses:Food:yearly")).toBeDefined();
-    expect(findNode(unified, "Expenses:Food:yearly:quarterly")).toBeDefined();
-    const node = findNode(unified, "Expenses:Food:yearly:quarterly:monthly");
+    expect(findNode(unified, 'Expenses:yearly')).toBeDefined();
+    expect(findNode(unified, 'Expenses:yearly:quarterly')).toBeDefined();
+    const node = findNode(unified, 'Expenses:yearly:quarterly:monthly');
     expect(node).toBeDefined();
-    expect(node!.budgets).toHaveLength(1);
     expect(node!.budgets[0]!.id).toBe(budget.id);
   });
 
-  // ── M: Many ────────────────────────────────────────────────────────────────
+  // ── O: One — MULTI-SEGMENT accounts ───────────────────────────────────────
+  //
+  // Expenses:Food (2 segments):
+  //   intermediate = Expenses → gets full chain :yearly:quarterly:monthly
+  //   leaf         = Food     → gets PERIOD_SUFFIX
 
-  it("M – same account with yearly AND monthly budgets: yearly is ancestor of monthly", () => {
+  it('O – two-segment account yearly → Expenses:yearly:quarterly:monthly:Food:yearly', () => {
     /*
-     * Forest input:
-     *   yearly  ──► Expenses:Food  ($12 000)
-     *   monthly ──► Expenses:Food  ($800)
-     *
-     * Expected unified tree:
-     *
      *   Expenses
-     *   └── Food
-     *       └── yearly          ◄── $12 000
-     *           └── quarterly   (ghost)
-     *               └── monthly ◄── $800
-     *
-     * Key invariant: the two budgets for the SAME account are now in an
-     * ancestor-descendant relationship, letting constraints compare them directly.
+     *   └── yearly (ghost)
+     *       └── quarterly (ghost)
+     *           └── monthly (ghost)
+     *               └── Food
+     *                   └── yearly ◄── $12 000
      */
-    // Arrange
+    const budget = makeBudget(12_000);
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('yearly', makeAccountLabel('Expenses:Food'), budget);
+
+    const unified = forest.buildUnifiedTree()!;
+
+    // The full intermediate chain for Expenses must exist as ghosts
+    expect(findNode(unified, 'Expenses:yearly')).toBeDefined();
+    expect(findNode(unified, 'Expenses:yearly:quarterly')).toBeDefined();
+    expect(findNode(unified, 'Expenses:yearly:quarterly:monthly')).toBeDefined();
+
+    // Budget lives at the leaf Food:yearly
+    const node = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly');
+    expect(node).toBeDefined();
+    expect(node!.budgets[0]!.id).toBe(budget.id);
+  });
+
+  it('O – two-segment account quarterly → Expenses:yearly:quarterly:monthly:Food:yearly:quarterly', () => {
+    const budget = makeBudget(3_000);
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('quarterly', makeAccountLabel('Expenses:Food'), budget);
+
+    const unified = forest.buildUnifiedTree()!;
+
+    const node = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly');
+    expect(node).toBeDefined();
+    expect(node!.budgets[0]!.id).toBe(budget.id);
+  });
+
+  it('O – two-segment account monthly → Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly', () => {
+    /*
+     *   Expenses
+     *   └── yearly (ghost)
+     *       └── quarterly (ghost)
+     *           └── monthly (ghost)
+     *               └── Food
+     *                   └── yearly (ghost)
+     *                       └── quarterly (ghost)
+     *                           └── monthly ◄── $800
+     */
+    const budget = makeBudget(800);
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food'), budget);
+
+    const unified = forest.buildUnifiedTree()!;
+
+    const node = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly');
+    expect(node).toBeDefined();
+    expect(node!.budgets[0]!.id).toBe(budget.id);
+  });
+
+  // ── CRITICAL PROPERTY: child account nests inside parent period node ───────
+
+  it('CRITICAL – Expenses:Food:monthly is a DESCENDANT of Expenses:monthly node (constraint checker can reach it)', () => {
+    /*
+     * For the constraint checker to work, the child budget node must be
+     * reachable from the parent budget node via .children.
+     *
+     *   Expenses:yearly:quarterly:monthly  ($500)  ← parent budget node
+     *   └── Food (ghost)
+     *       └── yearly:quarterly:monthly   ($300)  ← child budget node
+     *
+     * collectClosestBudgets([Food ghost]) must find $300/monthly.
+     */
+    const parentBudget = makeBudget(500);
+    const childBudget  = makeBudget(300);
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('monthly', makeAccountLabel('Expenses'),      parentBudget)
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food'), childBudget);
+
+    const unified = forest.buildUnifiedTree()!;
+
+    const parentNode = findNode(unified, 'Expenses:yearly:quarterly:monthly');
+    expect(parentNode).toBeDefined();
+    expect(parentNode!.budgets[0]!.id).toBe(parentBudget.id);
+
+    // The child must be findable inside the parent node's subtree
+    const childNode = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly');
+    expect(childNode).toBeDefined();
+    expect(childNode!.budgets[0]!.id).toBe(childBudget.id);
+
+    // Verify the child is truly a descendant (reachable via parent.children)
+    function isDescendant(root: TreeNode, target: TreeNode): boolean {
+      for (const child of root.children) {
+        if (child === target || isDescendant(child, target)) return true;
+      }
+      return false;
+    }
+    expect(isDescendant(parentNode!, childNode!)).toBe(true);
+  });
+
+  // ── M: Many — same account with multiple periods ───────────────────────────
+
+  it('M – same account yearly AND monthly: yearly is ancestor of monthly', () => {
+    /*
+     *   Expenses:yearly:quarterly:monthly:Food:yearly          ◄── $12 000
+     *   └── quarterly (ghost)
+     *       └── monthly ◄── $800
+     *
+     * Structural invariant: yearly budget node is an ancestor of monthly.
+     */
     const yearlyBudget  = makeBudget(12_000);
     const monthlyBudget = makeBudget(800);
     const forest = BudgetForest.createEmpty(CONFIG)
-      .insertBudget("yearly",  makeAccountLabel("Expenses:Food"), yearlyBudget)
-      .insertBudget("monthly", makeAccountLabel("Expenses:Food"), monthlyBudget);
-    // Act
+      .insertBudget('yearly',  makeAccountLabel('Expenses:Food'), yearlyBudget)
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food'), monthlyBudget);
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert – yearly
-    const yearlyNode = findNode(unified, "Expenses:Food:yearly");
-    expect(yearlyNode).toBeDefined();
-    expect(yearlyNode!.budgets).toHaveLength(1);
+
+    const yearlyNode  = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly');
+    const monthlyNode = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly');
+
     expect(yearlyNode!.budgets[0]!.id).toBe(yearlyBudget.id);
-    // Assert – monthly (three levels deep)
-    const monthlyNode = findNode(unified, "Expenses:Food:yearly:quarterly:monthly");
-    expect(monthlyNode).toBeDefined();
-    expect(monthlyNode!.budgets).toHaveLength(1);
     expect(monthlyNode!.budgets[0]!.id).toBe(monthlyBudget.id);
+
+    // yearly node must be an ancestor of monthly node
+    function isDescendant(root: TreeNode, target: TreeNode): boolean {
+      for (const c of root.children) {
+        if (c === target || isDescendant(c, target)) return true;
+      }
+      return false;
+    }
+    expect(isDescendant(yearlyNode!, monthlyNode!)).toBe(true);
   });
 
-  it("M – parent account (yearly) and child account (monthly) both appear correctly", () => {
+  it('M – parent account (yearly) + child account (monthly): child inside parent node', () => {
     /*
-     * Forest input:
-     *   yearly  ──► Expenses:Food            ($12 000)
-     *   monthly ──► Expenses:Food:Groceries  ($500)
-     *
-     * Expected unified tree:
-     *
-     *   Expenses
-     *   └── Food
-     *       ├── yearly      ◄── $12 000          (period chain for Food)
-     *       └── Groceries                        (account ghost)
-     *           └── yearly     (ghost)
-     *               └── quarterly (ghost)
-     *                   └── monthly ◄── $500     (period chain for Groceries)
+     *   Expenses:yearly:quarterly:monthly:Food:yearly        ◄── $12 000
+     *       └── quarterly (ghost)
+     *           └── monthly (ghost)
+     *               └── Groceries
+     *                   └── yearly:quarterly:monthly         ◄── $500
      */
-    // Arrange
     const parentBudget = makeBudget(12_000);
     const childBudget  = makeBudget(500);
     const forest = BudgetForest.createEmpty(CONFIG)
-      .insertBudget("yearly",  makeAccountLabel("Expenses:Food"),          parentBudget)
-      .insertBudget("monthly", makeAccountLabel("Expenses:Food:Groceries"), childBudget);
-    // Act
+      .insertBudget('yearly',  makeAccountLabel('Expenses:Food'),          parentBudget)
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food:Groceries'), childBudget);
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert parent
-    const parentNode = findNode(unified, "Expenses:Food:yearly");
+
+    const parentNode = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly');
     expect(parentNode!.budgets[0]!.id).toBe(parentBudget.id);
-    // Assert child
-    const childNode = findNode(unified, "Expenses:Food:Groceries:yearly:quarterly:monthly");
+
+    const childNode = findNode(
+      unified,
+      'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly:Groceries:yearly:quarterly:monthly',
+    );
     expect(childNode).toBeDefined();
     expect(childNode!.budgets[0]!.id).toBe(childBudget.id);
   });
 
-  it("M – ghost quarterly always exists between yearly and monthly for the same account", () => {
+  it('M – ghost quarterly between yearly and monthly for the same account', () => {
     /*
-     * Forest input:
-     *   yearly  ──► Expenses:Food  ($12 000)
-     *   monthly ──► Expenses:Food  ($800)
-     *   (NO quarterly budget)
-     *
-     *   Expenses
-     *   └── Food
-     *       └── yearly
-     *           └── quarterly  ◄── ghost (0 budgets, but node must exist!)
-     *               └── monthly
+     * yearly AND monthly at Expenses:Food — no quarterly budget.
+     * Food:yearly:quarterly must exist as a ghost with 0 budgets.
      */
-    // Arrange
     const forest = BudgetForest.createEmpty(CONFIG)
-      .insertBudget("yearly",  makeAccountLabel("Expenses:Food"), makeBudget(12_000))
-      .insertBudget("monthly", makeAccountLabel("Expenses:Food"), makeBudget(800));
-    // Act
+      .insertBudget('yearly',  makeAccountLabel('Expenses:Food'), makeBudget(12_000))
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food'), makeBudget(800));
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert – ghost quarterly node present with no budgets
-    const quarterlyGhost = findNode(unified, "Expenses:Food:yearly:quarterly");
+
+    const quarterlyGhost = findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly');
     expect(quarterlyGhost).toBeDefined();
     expect(quarterlyGhost!.budgets).toHaveLength(0);
   });
 
   // ── B: Boundary ────────────────────────────────────────────────────────────
 
-  it("B – single-segment (top-level) account path works correctly", () => {
+  it('B – single-segment top-level account (no interleaving needed)', () => {
     /*
-     * Forest input:
-     *   monthly ──► Expenses  ($5 000)
-     *
-     * Expected unified tree:
-     *
-     *   Expenses                      (root, also ghost account node)
-     *   └── yearly   (ghost)
-     *       └── quarterly (ghost)
-     *           └── monthly ◄── $5 000
+     *   Expenses
+     *   └── yearly:quarterly:monthly ◄── $5 000
      */
-    // Arrange
     const budget = makeBudget(5_000);
-    const forest = BudgetForest.createEmpty(CONFIG).insertBudget(
-      "monthly",
-      makeAccountLabel("Expenses"),
-      budget,
-    );
-    // Act
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('monthly', makeAccountLabel('Expenses'), budget);
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert
-    const node = findNode(unified, "Expenses:yearly:quarterly:monthly");
-    expect(node).toBeDefined();
+    const node = findNode(unified, 'Expenses:yearly:quarterly:monthly');
     expect(node!.budgets[0]!.id).toBe(budget.id);
   });
 
-  it("B – sibling accounts each get their own period chains (no cross-contamination)", () => {
+  it('B – sibling accounts each get isolated period chains (no cross-contamination)', () => {
     /*
-     * Forest input:
-     *   monthly ──► Expenses:Food:Groceries  ($400)
-     *   monthly ──► Expenses:Food:DiningOut  ($300)
-     *
-     * Expected unified tree:
-     *
-     *   Expenses
-     *   └── Food
-     *       ├── Groceries
-     *       │   └── yearly:quarterly:monthly ◄── $400
-     *       └── DiningOut
-     *           └── yearly:quarterly:monthly ◄── $300
+     *   Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly:Groceries:...monthly  ◄── $400
+     *   Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly:DiningOut:...monthly  ◄── $300
      */
-    // Arrange
-    const grocBudget  = makeBudget(400);
+    const grocBudget   = makeBudget(400);
     const diningBudget = makeBudget(300);
     const forest = BudgetForest.createEmpty(CONFIG)
-      .insertBudget("monthly", makeAccountLabel("Expenses:Food:Groceries"),  grocBudget)
-      .insertBudget("monthly", makeAccountLabel("Expenses:Food:DiningOut"), diningBudget);
-    // Act
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food:Groceries'),  grocBudget)
+      .insertBudget('monthly', makeAccountLabel('Expenses:Food:DiningOut'), diningBudget);
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert – each sibling has its own isolated period chain
-    const grocNode  = findNode(unified, "Expenses:Food:Groceries:yearly:quarterly:monthly");
+
+    const grocNode = findNode(
+      unified,
+      'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly:Groceries:yearly:quarterly:monthly',
+    );
     expect(grocNode!.budgets[0]!.id).toBe(grocBudget.id);
-    const diningNode = findNode(unified, "Expenses:Food:DiningOut:yearly:quarterly:monthly");
+
+    const diningNode = findNode(
+      unified,
+      'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly:DiningOut:yearly:quarterly:monthly',
+    );
     expect(diningNode!.budgets[0]!.id).toBe(diningBudget.id);
   });
 
   // ── I: Interface ───────────────────────────────────────────────────────────
 
-  it("I – returns an instance of BudgetTree", () => {
-    // Arrange
-    const forest = BudgetForest.createEmpty(CONFIG).insertBudget(
-      "yearly",
-      makeAccountLabel("Expenses:Food"),
-      makeBudget(1_000),
-    );
-    // Act
-    const result = forest.buildUnifiedTree();
-    // Assert
-    expect(result).toBeInstanceOf(BudgetTree);
+  it('I – returns an instance of BudgetTree', () => {
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('yearly', makeAccountLabel('Expenses:Food'), makeBudget(1_000));
+    expect(forest.buildUnifiedTree()).toBeInstanceOf(BudgetTree);
   });
 
   // ── E: Exceptions / Edge cases ─────────────────────────────────────────────
 
-  it("E – only yearly inserted: no quarterly or monthly nodes exist in the tree", () => {
+  it('E – only yearly inserted: no quarterly or monthly budget nodes below', () => {
     /*
-     * Forest input:
-     *   yearly ──► Expenses:Food  ($12 000)
-     *   (no quarterly or monthly trees)
-     *
-     *   Expenses
-     *   └── Food
-     *       └── yearly  ◄── $12 000
-     *           (quarterly and monthly must NOT be present)
+     * Expenses:Food (yearly) → Expenses:yearly:quarterly:monthly:Food:yearly
+     * No Food:quarterly or Food:monthly should exist.
      */
-    // Arrange
-    const forest = BudgetForest.createEmpty(CONFIG).insertBudget(
-      "yearly",
-      makeAccountLabel("Expenses:Food"),
-      makeBudget(12_000),
-    );
-    // Act
+    const forest = BudgetForest.createEmpty(CONFIG)
+      .insertBudget('yearly', makeAccountLabel('Expenses:Food'), makeBudget(12_000));
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert – no deeper period nodes created
-    expect(findNode(unified, "Expenses:Food:yearly:quarterly")).toBeUndefined();
-    expect(findNode(unified, "Expenses:Food:yearly:quarterly:monthly")).toBeUndefined();
+
+    // The yearly budget node exists
+    expect(findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly')).toBeDefined();
+    // No quarterly or monthly budget nodes deeper in the Food subtree
+    expect(findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly')).toBeUndefined();
+    expect(findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly:monthly')).toBeUndefined();
   });
 
-  it("E – different accounts on different periods do not share period-chain nodes", () => {
+  it('E – different accounts on different periods do NOT share period nodes', () => {
     /*
-     * Forest input:
-     *   yearly  ──► Expenses:Food       ($12 000)
-     *   monthly ──► Expenses:Transport  ($200)
-     *
-     * Expected unified tree:
-     *
-     *   Expenses
-     *   ├── Food
-     *   │   └── yearly ◄── $12 000   (no quarterly/monthly — Food has no such budgets)
-     *   └── Transport
-     *       └── yearly:quarterly:monthly ◄── $200
+     *   Expenses:Food (yearly $12 000) → lives at Food:yearly
+     *   Expenses:Transport (monthly $200) → lives at Transport:yearly:quarterly:monthly
      *
      * Food must NOT have a quarterly or monthly node.
-     * Transport must NOT have a yearly or quarterly budget node.
+     * Transport must have the full chain.
      */
-    // Arrange
     const forest = BudgetForest.createEmpty(CONFIG)
-      .insertBudget("yearly",  makeAccountLabel("Expenses:Food"),      makeBudget(12_000))
-      .insertBudget("monthly", makeAccountLabel("Expenses:Transport"),  makeBudget(200));
-    // Act
+      .insertBudget('yearly',  makeAccountLabel('Expenses:Food'),      makeBudget(12_000))
+      .insertBudget('monthly', makeAccountLabel('Expenses:Transport'),  makeBudget(200));
+
     const unified = forest.buildUnifiedTree()!;
-    // Assert – Food period chain ends at yearly
-    expect(findNode(unified, "Expenses:Food:yearly")).toBeDefined();
-    expect(findNode(unified, "Expenses:Food:yearly:quarterly")).toBeUndefined();
-    // Assert – Transport period chain goes all the way to monthly
-    expect(findNode(unified, "Expenses:Transport:yearly:quarterly:monthly")).toBeDefined();
+
+    // Food: budget at yearly, nothing below
+    expect(findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly')).toBeDefined();
+    expect(findNode(unified, 'Expenses:yearly:quarterly:monthly:Food:yearly:quarterly')).toBeUndefined();
+
+    // Transport: budget at monthly (full chain)
+    expect(
+      findNode(unified, 'Expenses:yearly:quarterly:monthly:Transport:yearly:quarterly:monthly'),
+    ).toBeDefined();
   });
 });

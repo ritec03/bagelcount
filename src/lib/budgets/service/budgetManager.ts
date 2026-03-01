@@ -320,77 +320,68 @@ class BudgetFacadeImpl implements BudgetFacade {
 
   // ── addBudget ────────────────────────────────────────────────────────────
 
-  addBudget(budget: StandardBudgetOutput): OperationResult {
-    const preview = this.#tentativeAdd(budget);
-    if (!preview.ok) return preview.result;
-
-    // Commit.
-    this.#tree = preview.tentativeTree;
-    this.#rawById.set(budget.id, budget);
-
-    const changedIds = new Set<string>([budget.id, ...affectedIds(preview.allViolations)]);
-    this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
-    this.#updateCacheAndNotifyListeners();
-    return this.#success(preview.allViolations, changedIds);
+  addBudget(budget: BudgetAllocation): OperationResult {
+    return this.addBudgetGeneral(budget, true);
   }
-
-  // ── previewAddBudget ─────────────────────────────────────────────────────
 
   previewAddBudget(budget: StandardBudgetOutput): OperationResult {
-    const preview = this.#tentativeAdd(budget);
-    if (!preview.ok) return preview.result;
-    // No commit — just return the violation state for the caller to display.
-    const changedIds = new Set<string>([budget.id, ...affectedIds(preview.allViolations)]);
-    this.#findParentIds(budget.account).forEach((pid) => changedIds.add(pid));
-
-    // Provide the dummy budget as an override since it's not in the committed rawById map
-    const overrides = new Map([[budget.id, budget]]);
-    return this.#success(preview.allViolations, changedIds, overrides);
+    return this.addBudgetGeneral(budget, false);
   }
+  // ── previewAddBudget ─────────────────────────────────────────────────────
 
-  /** Shared logic: insert tentatively + validate. Does NOT commit. */
-  #tentativeAdd(budget: StandardBudgetOutput):
-    | { ok: false; result: OperationResult }
-    | { ok: true; tentativeTree: BudgetTree; allViolations: ConstraintViolationMap } {
-
-    if (this.#tree === null) {
-      console.log("tree is null")
-      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
+  addBudgetGeneral(budget: BudgetAllocation, isPreview: boolean) : OperationResult  {
+    if (this.#forest == null) {
+      return { success: false, errors: {}, warnings: {} };
     }
+    // Reject duplicate IDs — each budget must have a unique ID.
     if (this.#rawById.has(budget.id)) {
-      console.log("id already exists")
-      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
+      return { success: false, errors: {}, warnings: {} };
     }
 
-    const label = makeAccountLabel(budget.account);
-    const inst  = rawToInstance(budget);
+    const instance = new BudgetInstance(
+      new DateRange(
+        NaiveDate.fromString(budget.start_date),
+        budget.end_date ? NaiveDate.fromString(budget.end_date) : null,
+      ),
+      Number(budget.amount),
+      budget.id,
+    );
 
-    let currentTree = this.#tree;
-    if (currentTree.root.accountLabel[0] === '__empty__') {
-      const rootSegment = budget.account.split(':')[0]!;
-      currentTree = BudgetTree.createEmpty(makeAccountLabel(rootSegment), this.#config);
+    if (this.isStandardBudget(budget)) {
+      const result = this.#forest.tryInsert(budget.frequency, makeAccountLabel(budget.account), instance);
+      if (!result.success) return result;
+
+      if (isPreview) {
+        this.#forest = result.forest;
+        this.#rawById.set(budget.id, budget);
+      }
+
+      // Build ExtendedBudgets for the new budget + every parent/sibling whose
+      // warning state may have changed after the insertion.
+      const affectedIds = new Set<string>([]);
+      this.#findParentIds(budget.account).forEach((id) => affectedIds.add(id));
+      this.#findSiblingIds(budget.account).forEach((id) => affectedIds.add(id));
+
+      const affectedRaws = [...affectedIds]
+        .map((id) => this.#rawById.get(id))
+        .filter((r): r is BudgetAllocation => r !== undefined);
+
+      const updates: Record<string, ExtendedBudget> = {};
+      for (const ext of this.#buildExtendedList([...affectedRaws, budget])) {
+        updates[ext.id] = ext;
+      }
+
+      this.#updateCacheAndNotifyListeners();
+      return { success: true, updates };
+    } else {
+      this.#customBudgets.push({ ...instance, accountLabel: makeAccountLabel(budget.account) });
+      this.#rawById.set(budget.id, budget);
+      return { success: true, updates: { [budget.id]: { ...budget, warnings: {} } } };
     }
-
-    let tentativeTree: BudgetTree;
-    try {
-      tentativeTree = currentTree.insert(label, inst);
-    } catch (e){
-      console.log("Enounctered error adding budget", e)
-      return { ok: false, result: this.#failure({ errors: {}, warnings: {} }) };
-    }
-
-    const allViolations = tentativeTree.validateTree();
-    const errors   = filterViolationsByMode(allViolations, this.#config, (m) => m === 'blocking');
-    const warnings = filterViolationsByMode(allViolations, this.#config, (m) => m === 'warning');
-
-    if (Object.keys(errors).length > 0) {
-      return { ok: false, result: this.#failure({ errors, warnings }) };
-    }
-
-    return { ok: true, tentativeTree, allViolations };
   }
 
   // ── previewUpdateBudget ──────────────────────────────────────────────────
+
 
   previewUpdateBudget(
     id: string,

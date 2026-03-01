@@ -244,4 +244,65 @@ function deleteAt(
   return new BudgetTreeNode(node.accountLabel, node.budgets, updatedChildren);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cross-frequency utilities (used by constraint checkers on the unified tree)
+// ─────────────────────────────────────────────────────────────────────────────
 
+import type { PeriodType } from '@/lib/models/types';
+
+const PERIOD_SEGMENTS = new Set<string>(['yearly', 'quarterly', 'monthly']);
+
+/**
+ * Return the {@link PeriodType} encoded in a unified-tree node's label, or
+ * `null` for plain account nodes that have no period suffix.
+ *
+ * In the unified tree, period segments are always the **last** segment of the
+ * label, so only the final element needs to be checked:
+ *
+ * `['Expenses', 'Food', 'yearly']`               → `'yearly'`
+ * `['Expenses', 'Food', 'yearly', 'quarterly']`  → `'quarterly'`
+ * `['Expenses', 'Food']`                         → `null`
+ * `['Expenses', 'yearly', 'Food']`               → `null` (period is not last)
+ */
+export function nodeFrequency(node: TreeNode): PeriodType | null {
+  const lastSeg = node.accountLabel[node.accountLabel.length - 1];
+  if (lastSeg !== undefined && PERIOD_SEGMENTS.has(lastSeg)) {
+    return lastSeg as PeriodType;
+  }
+  return null;
+}
+
+/**
+ * DFS through `nodes`, skipping {@link GhostNode} layers, and collect the
+ * first "real" {@link BudgetInstance}s found at each branch together with
+ * their {@link PeriodType}.
+ *
+ * A branch is terminated as soon as a node with at least one budget is found
+ * (we do **not** descend further past it).  Ghost nodes and budget-less
+ * {@link BudgetTreeNode}s are transparent — we recurse into their children.
+ *
+ * Returns an empty array when no real budgets exist below `nodes`.
+ */
+export function collectClosestBudgets(
+  nodes: readonly TreeNode[],
+): Array<{ inst: BudgetInstance; freq: PeriodType }> {
+  const result: Array<{ inst: BudgetInstance; freq: PeriodType }> = [];
+
+  for (const node of nodes) {
+    if (node.budgets.length > 0) {
+      // This node has budgets — it is the "closest" on this branch.
+      const freq = nodeFrequency(node);
+      if (freq !== null) {
+        for (const inst of node.budgets) {
+          result.push({ inst, freq });
+        }
+      }
+      // Do NOT descend further past a real budget node.
+    } else {
+      // Ghost or empty budget node — transparent, recurse into children.
+      result.push(...collectClosestBudgets(node.children));
+    }
+  }
+
+  return result;
+}

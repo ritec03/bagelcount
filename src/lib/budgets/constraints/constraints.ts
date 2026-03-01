@@ -16,7 +16,7 @@
  * allows that, but it appends warnings to the budget and the affected budgets.
  */
 
-import type { BudgetTreeNode } from "../core/budgetNode";
+import type { TreeNode } from "../core/budgetNode";
 
 type Role = "parent" | "child";
 
@@ -67,7 +67,7 @@ export type ConstraintViolationMap = {
  * instance.
  */
 export type ConstraintChecker<K extends Constraint> = (
-  budgetNode: BudgetTreeNode,
+  budgetNode: TreeNode,
   config: ConstraintRegistry[K]["Config"],
 ) => ConstraintViolationMap;
 
