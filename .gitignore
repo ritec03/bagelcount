@@ -27,3 +27,4 @@ dist-ssr
 src/lib/api
 .env
 .claude
+.pnpm-store
