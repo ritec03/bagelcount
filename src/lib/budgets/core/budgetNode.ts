@@ -63,15 +63,7 @@ export class TreeNode {
  * The tree does **not** carry frequency / period information; that belongs to
  * the containing budget tree.
  */
-export class BudgetTreeNode extends TreeNode {
-  constructor(
-    accountLabel: AccountLabel,
-    budgets: readonly BudgetInstance[],
-    children: readonly TreeNode[],
-  ) {
-    super(accountLabel, budgets, children);
-  }
-}
+export class BudgetTreeNode extends TreeNode {}
 
 export class GhostNode extends TreeNode {
   constructor(
