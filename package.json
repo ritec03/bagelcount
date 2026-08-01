@@ -14,9 +14,15 @@
     "gen:api": "pnpm run gen:api:json && pnpm run gen:api:ts",
     "build": "pnpm run gen:api:ts && tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "ruff check . ; eslint .",
+    "lint": "pnpm run lint:ts ; pnpm run lint:py",
+    "lint:ts": "eslint .",
+    "lint:py": "cd backend && uv run ruff check . && uv run ruff format --check .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "test": "vitest run ; uv run pytest",
+    "test": "pnpm run test:ts ; pnpm run test:py",
+    "test:ts": "vitest run",
+    "test:py": "cd backend && uv run pytest",
     "test:ui": "vitest --ui"
   },
   "dependencies": {
